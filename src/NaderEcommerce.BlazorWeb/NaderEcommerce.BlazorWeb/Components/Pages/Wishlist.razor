@@ -1,0 +1,141 @@
+@page "/wishlist"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>علاقه‌مندی‌ها | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">انتخاب‌های ذخیره‌شده</p>
+    <h1>علاقه‌مندی‌ها</h1>
+    <p>محصولات انتخابی‌ات را نگه دار و هر زمان خواستی وارد سبد خرید کن.</p>
+</section>
+
+<section class="content-band">
+    @if (!Session.IsAuthenticated)
+    {
+        <div class="notice-action">
+            <div class="notice">
+                برای دیدن علاقه‌مندی‌ها ابتدا وارد حساب کاربری شو.
+            </div>
+            <a class="button button--primary" href="@SignInUrl">ورود</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت علاقه‌مندی‌ها...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice">@message</div>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="empty-state">هنوز محصولی به علاقه‌مندی‌ها اضافه نشده است.</div>
+    }
+    else
+    {
+        <div class="wishlist-grid">
+            @foreach (var item in items)
+            {
+                <article class="wishlist-card">
+                    <a class="wishlist-card__media" href="@($"/products/{item.Slug}")">
+                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                        {
+                            <img src="@item.ImageUrl" alt="@item.Name" />
+                        }
+                    </a>
+                    <div class="wishlist-card__body">
+                        <h2><a href="@($"/products/{item.Slug}")">@item.Name</a></h2>
+                        <p>@item.Sku</p>
+                        <div class="detail-price">
+                            <strong>@FormatPrice(item.DiscountPrice ?? item.Price)</strong>
+                            @if (item.DiscountPrice is not null)
+                            {
+                                <span>@FormatPrice(item.Price)</span>
+                            }
+                        </div>
+                        <div class="wishlist-card__actions">
+                            <button class="button button--primary" type="button" @onclick="() => AddToCartAsync(item.ProductId)">
+                                افزودن به سبد
+                            </button>
+                            <button class="button button--ghost" type="button" @onclick="() => RemoveAsync(item.ProductId)">
+                                حذف
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<WishlistProductDto> items = Array.Empty<WishlistProductDto>();
+    private bool isLoading = true;
+    private string? message;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "wishlist");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        message = null;
+
+        try
+        {
+            items = await StorefrontApi.GetWishlistAsync();
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task AddToCartAsync(Guid productId)
+    {
+        try
+        {
+            await StorefrontApi.AddCartItemAsync(new AddCartItemRequest(productId, 1));
+            message = "محصول به سبد خرید اضافه شد.";
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private async Task RemoveAsync(Guid productId)
+    {
+        try
+        {
+            items = await StorefrontApi.RemoveWishlistAsync(productId);
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+}

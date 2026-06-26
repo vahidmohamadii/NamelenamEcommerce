@@ -1,0 +1,151 @@
+@page "/admin/orders"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+@using NaderEcommerce.Domain.Orders
+
+<PageTitle>مدیریت سفارش‌ها | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>سفارش‌ها</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <section class="admin-card">
+        <h2>فهرست سفارش‌ها</h2>
+        <div class="admin-table">
+            @foreach (var order in orders)
+            {
+                <div class="admin-table__row">
+                    <span>@order.OrderNumber</span>
+                    <span>@order.CustomerFullName</span>
+                    <strong>@order.TotalAmount.ToString("N0")</strong>
+                    <select value="@order.Status" @onchange="eventArgs => UpdateStatusAsync(order.OrderId, eventArgs.Value?.ToString())">
+                        @foreach (var status in Enum.GetValues<OrderStatus>())
+                        {
+                            <option value="@status">@UiText.OrderStatus(status)</option>
+                        }
+                    </select>
+                    <button class="button button--ghost" type="button" @onclick="() => ShowDetailsAsync(order.OrderNumber)">جزئیات</button>
+                </div>
+            }
+        </div>
+    </section>
+
+    @if (selectedOrder is not null)
+    {
+        <section class="admin-card">
+            <h2>@selectedOrder.OrderNumber</h2>
+            <div class="order-detail-grid">
+                <div class="order-status-box">
+                    <strong>@selectedOrder.CustomerFullName</strong>
+                    <span>@selectedOrder.CustomerEmail</span>
+                    <span>@selectedOrder.CustomerPhoneNumber</span>
+                    <span>@selectedOrder.ShippingAddress</span>
+                    <span>@selectedOrder.PostalCode</span>
+                </div>
+                <div class="summary-list">
+                    <div><span>جمع جزء</span><strong>@selectedOrder.Subtotal.ToString("N0")</strong></div>
+                    <div><span>تخفیف</span><strong>@selectedOrder.DiscountAmount.ToString("N0")</strong></div>
+                    <div><span>ارسال</span><strong>@selectedOrder.ShippingAmount.ToString("N0")</strong></div>
+                    <div><span>مالیات</span><strong>@selectedOrder.TaxAmount.ToString("N0")</strong></div>
+                    <div class="summary-list__total"><span>مبلغ نهایی</span><strong>@selectedOrder.TotalAmount.ToString("N0")</strong></div>
+                </div>
+            </div>
+
+            <h2>اقلام سفارش</h2>
+            <div class="admin-table">
+                @foreach (var item in selectedOrder.Items)
+                {
+                    <div class="admin-table__row">
+                        <span>@item.ProductName</span>
+                        <span>@item.Sku</span>
+                        <span>@item.Quantity x @item.UnitPrice.ToString("N0")</span>
+                        <strong>@item.TotalPrice.ToString("N0")</strong>
+                    </div>
+                }
+            </div>
+
+            <h2>پرداخت‌ها</h2>
+            <div class="admin-table">
+                @foreach (var payment in selectedOrder.Payments)
+                {
+                    <div class="admin-table__row">
+                        <span>@payment.GatewayName</span>
+                        <span>@UiText.PaymentStatus(payment.Status)</span>
+                        <span>@payment.GatewayTransactionId</span>
+                        <strong>@payment.Amount.ToString("N0")</strong>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice">@message</div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<AdminOrderSummaryDto> orders = Array.Empty<AdminOrderSummaryDto>();
+    private OrderDetailsDto? selectedOrder;
+    private string? message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        orders = await AdminApi.GetOrdersAsync();
+        StateHasChanged();
+    }
+
+    private async Task UpdateStatusAsync(Guid orderId, string? statusText)
+    {
+        if (!Enum.TryParse<OrderStatus>(statusText, out var status))
+        {
+            return;
+        }
+
+        try
+        {
+            await AdminApi.UpdateOrderStatusAsync(orderId, new UpdateOrderStatusRequest(status));
+            await LoadAsync();
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private async Task ShowDetailsAsync(string orderNumber)
+    {
+        try
+        {
+            selectedOrder = await AdminApi.GetOrderAsync(orderNumber);
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+}

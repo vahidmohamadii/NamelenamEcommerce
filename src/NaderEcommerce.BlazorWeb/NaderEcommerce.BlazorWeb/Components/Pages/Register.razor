@@ -1,0 +1,101 @@
+@page "/register"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>ثبت‌نام | فروشگاه نادر</PageTitle>
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <p class="eyebrow">حساب مشتری</p>
+        <h1>ثبت‌نام</h1>
+        <p class="auth-copy">حساب جدید بساز تا مسیر خرید، سبد و سفارش‌های ثبت‌شده را در اختیار داشته باشی.</p>
+
+        <EditForm Model="request" OnValidSubmit="SubmitAsync">
+            <div class="auth-form">
+                <label>
+                    نام و نام خانوادگی
+                    <InputText @bind-Value="request.FullName" />
+                </label>
+                <label>
+                    ایمیل
+                    <InputText @bind-Value="request.Email" type="email" />
+                </label>
+                <label>
+                    شماره تماس
+                    <InputText @bind-Value="request.PhoneNumber" />
+                </label>
+                <label>
+                    رمز عبور
+                    <InputText @bind-Value="request.Password" type="password" />
+                </label>
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="notice">@errorMessage</div>
+                }
+
+                <button class="button button--primary" type="submit" disabled="@isSubmitting">
+                    @(isSubmitting ? "در حال ایجاد حساب..." : "ایجاد حساب")
+                </button>
+            </div>
+        </EditForm>
+
+        <p class="auth-link-row">
+            حساب داری؟
+            <a href="@BuildSignInUrl()">ورود</a>
+        </p>
+    </div>
+</section>
+
+@code {
+    [Parameter, SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private RegisterFormModel request = new();
+    private bool isSubmitting;
+    private string? errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await StorefrontApi.RegisterAsync(
+                new RegisterRequest(request.Email, request.Password, request.FullName, request.PhoneNumber));
+            await Session.SignInAsync(response);
+            Navigation.NavigateTo(NormalizeReturnUrl());
+        }
+        catch (StorefrontApiException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string BuildSignInUrl()
+    {
+        return string.IsNullOrWhiteSpace(ReturnUrl)
+            ? "/signin"
+            : QueryHelpers.AddQueryString("/signin", "returnUrl", ReturnUrl);
+    }
+
+    private string NormalizeReturnUrl()
+    {
+        return string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : $"/{ReturnUrl.TrimStart('/')}";
+    }
+
+    private sealed class RegisterFormModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string Password { get; set; } = string.Empty;
+    }
+}

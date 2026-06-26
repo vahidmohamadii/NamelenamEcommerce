@@ -1,0 +1,109 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>پنل مدیریت | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>عملیات فروشگاه</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin" Match="NavLinkMatch.All">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت داشبورد مدیریت...</div>
+    }
+    else if (!IsAdmin)
+    {
+        <div class="notice">برای مشاهده این بخش با حساب ادمین وارد شوید.</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="notice">@errorMessage</div>
+    }
+    else if (dashboard is not null)
+    {
+        <div class="admin-metrics">
+            <article><span>محصولات</span><strong>@dashboard.ProductCount</strong></article>
+            <article><span>محصولات فعال</span><strong>@dashboard.ActiveProductCount</strong></article>
+            <article><span>دسته‌بندی‌ها</span><strong>@dashboard.CategoryCount</strong></article>
+            <article><span>سفارش‌های در انتظار</span><strong>@dashboard.PendingOrderCount</strong></article>
+            <article><span>سفارش‌های پرداخت‌شده</span><strong>@dashboard.PaidOrderCount</strong></article>
+            <article><span>مشتریان</span><strong>@dashboard.CustomerCount</strong></article>
+            <article><span>نظرات</span><strong>@dashboard.ReviewCount</strong></article>
+            <article><span>کوپن‌های فعال</span><strong>@dashboard.ActiveCouponCount</strong></article>
+            <article><span>درآمد</span><strong>@dashboard.RevenueTotal.ToString("N0")</strong></article>
+        </div>
+
+        <section class="admin-card">
+            <h2>سفارش‌های اخیر</h2>
+            <div class="admin-table">
+                @foreach (var order in dashboard.RecentOrders)
+                {
+                    <div class="admin-table__row">
+                        <span>@order.OrderNumber</span>
+                        <span>@order.CustomerFullName</span>
+                        <span>@UiText.OrderStatus(order.Status)</span>
+                        <strong>@order.TotalAmount.ToString("N0")</strong>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+</section>
+
+@code {
+    private AdminDashboardDto? dashboard;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private bool IsAdmin =>
+        Session.Current?.User.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)) == true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await Session.EnsureInitializedAsync();
+        if (!IsAdmin)
+        {
+            isLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            dashboard = await AdminApi.GetDashboardAsync();
+        }
+        catch (StorefrontApiException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API مدیریت در دسترس نیست.";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

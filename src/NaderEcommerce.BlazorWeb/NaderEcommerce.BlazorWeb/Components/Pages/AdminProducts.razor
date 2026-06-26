@@ -1,0 +1,284 @@
+@page "/admin/products"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>مدیریت محصولات | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>محصولات</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <div class="admin-grid admin-grid--wide">
+        <section class="admin-card">
+            <h2>@(editingId is null ? "محصول جدید" : "ویرایش محصول")</h2>
+            <form class="admin-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <label>نام <input @bind="form.Name" /></label>
+                <label>اسلاگ <input @bind="form.Slug" /></label>
+                <label>SKU <input @bind="form.Sku" /></label>
+                <label>توضیحات <textarea @bind="form.Description"></textarea></label>
+                <label>مشخصات <textarea @bind="form.Specifications"></textarea></label>
+                <div class="admin-form__columns">
+                    <label>قیمت <input type="number" step="1000" @bind="form.Price" /></label>
+                    <label>تخفیف <input type="number" step="1000" @bind="form.DiscountPrice" /></label>
+                    <label>موجودی <input type="number" @bind="form.Stock" /></label>
+                </div>
+                <label>
+                    لینک QR
+                    <select @bind="form.QrLinkIdText">
+                        <option value="">بدون لینک QR</option>
+                        @foreach (var link in qrLinks)
+                        {
+                            <option value="@link.Id">@(!string.IsNullOrWhiteSpace(link.Label) ? link.Label : link.TargetUrl)</option>
+                        }
+                    </select>
+                </label>
+                <div class="admin-option-list">
+                    <strong>دسته‌بندی‌ها</strong>
+                    @foreach (var category in categories)
+                    {
+                        <label class="check-row">
+                            <input type="checkbox" checked="@form.CategoryIds.Contains(category.Id)" @onchange="eventArgs => ToggleCategory(category.Id, eventArgs.Value)" />
+                            @category.Name
+                        </label>
+                    }
+                </div>
+                <div class="admin-image-list">
+                    <div class="section-heading">
+                        <h2>تصاویر</h2>
+                        <button class="button button--ghost" type="button" @onclick="AddImage">افزودن تصویر</button>
+                    </div>
+                    @for (var index = 0; index < form.Images.Count; index++)
+                    {
+                        var image = form.Images[index];
+                        <div class="admin-image-row">
+                            <label>آدرس تصویر <input @bind="image.Url" /></label>
+                            <label>متن جایگزین <input @bind="image.AltText" /></label>
+                            <label>ترتیب <input type="number" @bind="image.DisplayOrder" /></label>
+                            <label class="check-row"><input type="checkbox" @bind="image.IsPrimary" /> تصویر اصلی</label>
+                            <button class="button button--ghost" type="button" @onclick="() => RemoveImage(image)">حذف</button>
+                        </div>
+                    }
+                </div>
+                <div class="admin-checks">
+                    <label class="check-row"><input type="checkbox" @bind="form.IsActive" /> فعال</label>
+                    <label class="check-row"><input type="checkbox" @bind="form.IsFeatured" /> شاخص</label>
+                    <label class="check-row"><input type="checkbox" @bind="form.IsBestSeller" /> پرفروش</label>
+                </div>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetForm">جدید</button>
+                </div>
+            </form>
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="notice">@message</div>
+            }
+        </section>
+
+        <section class="admin-card">
+            <h2>فهرست محصولات</h2>
+            <div class="admin-table">
+                @foreach (var product in products)
+                {
+                    <div class="admin-table__row admin-table__row--dense">
+                        <span>@product.Name</span>
+                        <span>@product.Sku</span>
+                        <span>@product.Stock موجود</span>
+                        <strong>@product.Price.ToString("N0")</strong>
+                        <button class="button button--ghost" type="button" @onclick="() => Edit(product)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteAsync(product.Id)">غیرفعال</button>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<AdminProductDto> products = Array.Empty<AdminProductDto>();
+    private IReadOnlyList<AdminCategoryDto> categories = Array.Empty<AdminCategoryDto>();
+    private IReadOnlyList<AdminQrLinkDto> qrLinks = Array.Empty<AdminQrLinkDto>();
+    private ProductForm form = new();
+    private Guid? editingId;
+    private string? message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        categories = await AdminApi.GetCategoriesAsync();
+        qrLinks = await AdminApi.GetQrLinksAsync();
+        products = await AdminApi.GetProductsAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+        try
+        {
+            var imageRequests = form.Images
+                .Where(image => !string.IsNullOrWhiteSpace(image.Url))
+                .Select(image => new UpsertProductImageRequest(
+                    image.Url,
+                    image.AltText,
+                    image.DisplayOrder,
+                    image.IsPrimary))
+                .ToArray();
+
+            var request = new UpsertProductRequest(
+                form.Name,
+                form.Slug,
+                form.Sku,
+                form.Description,
+                form.Specifications,
+                form.Price,
+                form.DiscountPrice,
+                form.Stock,
+                form.IsActive,
+                form.IsFeatured,
+                form.IsBestSeller,
+                string.IsNullOrWhiteSpace(form.QrLinkIdText) ? null : Guid.Parse(form.QrLinkIdText),
+                form.CategoryIds.ToArray(),
+                imageRequests);
+
+            await AdminApi.SaveProductAsync(editingId, request);
+            ResetForm();
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is StorefrontApiException or FormatException)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private void Edit(AdminProductDto product)
+    {
+        editingId = product.Id;
+        form = new ProductForm
+        {
+            Name = product.Name,
+            Slug = product.Slug,
+            Sku = product.Sku,
+            Description = product.Description,
+            Specifications = product.Specifications,
+            Price = product.Price,
+            DiscountPrice = product.DiscountPrice,
+            Stock = product.Stock,
+            IsActive = product.IsActive,
+            IsFeatured = product.IsFeatured,
+            IsBestSeller = product.IsBestSeller,
+            QrLinkIdText = product.QrLinkId?.ToString() ?? string.Empty,
+            CategoryIds = product.CategoryIds.ToHashSet(),
+            Images = product.Images
+                .OrderBy(image => image.DisplayOrder)
+                .Select(image => new ProductImageForm
+                {
+                    Url = image.Url,
+                    AltText = image.AltText,
+                    DisplayOrder = image.DisplayOrder,
+                    IsPrimary = image.IsPrimary
+                })
+                .DefaultIfEmpty(new ProductImageForm { DisplayOrder = 1, IsPrimary = true })
+                .ToList()
+        };
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        await AdminApi.DeleteProductAsync(id);
+        await LoadAsync();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        form = new ProductForm();
+    }
+
+    private void ToggleCategory(Guid categoryId, object? value)
+    {
+        if (value is true)
+        {
+            form.CategoryIds.Add(categoryId);
+        }
+        else
+        {
+            form.CategoryIds.Remove(categoryId);
+        }
+    }
+
+    private void AddImage()
+    {
+        if (form.Images.Count >= 10)
+        {
+            message = "هر محصول حداکثر می‌تواند ۱۰ تصویر داشته باشد.";
+            return;
+        }
+
+        form.Images.Add(new ProductImageForm
+        {
+            DisplayOrder = form.Images.Count + 1,
+            IsPrimary = form.Images.Count == 0
+        });
+    }
+
+    private void RemoveImage(ProductImageForm image)
+    {
+        form.Images.Remove(image);
+        if (form.Images.Count > 0 && form.Images.All(item => !item.IsPrimary))
+        {
+            form.Images[0].IsPrimary = true;
+        }
+    }
+
+    private sealed class ProductForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string Sku { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Specifications { get; set; }
+        public decimal Price { get; set; }
+        public decimal? DiscountPrice { get; set; }
+        public int Stock { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsFeatured { get; set; }
+        public bool IsBestSeller { get; set; }
+        public string QrLinkIdText { get; set; } = string.Empty;
+        public HashSet<Guid> CategoryIds { get; set; } = new();
+        public List<ProductImageForm> Images { get; set; } = new()
+        {
+            new ProductImageForm { DisplayOrder = 1, IsPrimary = true }
+        };
+    }
+
+    private sealed class ProductImageForm
+    {
+        public string Url { get; set; } = string.Empty;
+        public string? AltText { get; set; }
+        public int DisplayOrder { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+}

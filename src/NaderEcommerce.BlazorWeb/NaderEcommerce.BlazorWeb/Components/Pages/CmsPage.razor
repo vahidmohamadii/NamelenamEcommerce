@@ -1,0 +1,77 @@
+@page "/pages/{Slug}"
+@page "/about-us"
+@page "/contact-us"
+@rendermode InteractiveServer
+@inject CmsApiClient CmsApi
+@inject NavigationManager Navigation
+
+<PageTitle>@(page?.MetaTitle ?? page?.Title ?? "صفحه") | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">فروشگاه نادر</p>
+    <h1>@(page?.Title ?? "صفحه")</h1>
+</section>
+
+<section class="content-band content-band--tight">
+    @if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت صفحه...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="notice">@errorMessage</div>
+    }
+    else if (page is not null)
+    {
+        <article class="cms-content">
+            @foreach (var block in SplitContent(page.Content))
+            {
+                <p>@block</p>
+            }
+        </article>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public string? Slug { get; set; }
+
+    private CmsPageDto? page;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+            page = relativePath.Equals("about-us", StringComparison.OrdinalIgnoreCase)
+                ? await CmsApi.GetPageByKeyAsync("about-us")
+                : relativePath.Equals("contact-us", StringComparison.OrdinalIgnoreCase)
+                    ? await CmsApi.GetPageByKeyAsync("contact-us")
+                    : await CmsApi.GetPageBySlugAsync(Slug ?? string.Empty);
+
+            if (page is null)
+            {
+                errorMessage = "صفحه پیدا نشد.";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API مدیریت محتوا در دسترس نیست.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static IReadOnlyList<string> SplitContent(string content)
+    {
+        return content
+            .Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+}

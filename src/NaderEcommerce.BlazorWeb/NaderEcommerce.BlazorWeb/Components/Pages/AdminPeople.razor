@@ -1,0 +1,110 @@
+@page "/admin/people"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>مدیریت کاربران | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>کاربران و نظرات</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <div class="admin-grid">
+        <section class="admin-card">
+            <h2>کاربران</h2>
+            <div class="admin-table">
+                @foreach (var user in users)
+                {
+                    <div class="admin-table__row">
+                        <span>@user.FullName</span>
+                        <span>@user.Email</span>
+                        <span>@UiText.Roles(user.Roles)</span>
+                        <select @bind="roleDrafts[user.Id]">
+                            <option value="Customer">مشتری</option>
+                            <option value="Admin">ادمین</option>
+                        </select>
+                        <button class="button button--ghost" type="button" @onclick="() => AssignRoleAsync(user)">ثبت نقش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => ToggleUserAsync(user)">
+                            @(user.IsActive ? "غیرفعال کردن" : "فعال کردن")
+                        </button>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="admin-card">
+            <h2>نظرات</h2>
+            <div class="admin-table">
+                @foreach (var review in reviews)
+                {
+                    <div class="admin-table__row">
+                        <span>@review.ProductName</span>
+                        <span>@review.CustomerFullName</span>
+                        <span>@review.Rating/5</span>
+                        <button class="button button--ghost" type="button" @onclick="() => ToggleReviewAsync(review)">
+                            @(review.IsApproved ? "مخفی کردن" : "تایید")
+                        </button>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<AdminUserDto> users = Array.Empty<AdminUserDto>();
+    private IReadOnlyList<AdminReviewDto> reviews = Array.Empty<AdminReviewDto>();
+    private readonly Dictionary<Guid, string> roleDrafts = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        users = await AdminApi.GetUsersAsync();
+        reviews = await AdminApi.GetReviewsAsync();
+        foreach (var user in users)
+        {
+            roleDrafts[user.Id] = user.Roles.Contains("Admin") ? "Admin" : "Customer";
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleUserAsync(AdminUserDto user)
+    {
+        await AdminApi.SetUserActiveAsync(user.Id, new SetUserActiveRequest(!user.IsActive));
+        await LoadAsync();
+    }
+
+    private async Task ToggleReviewAsync(AdminReviewDto review)
+    {
+        await AdminApi.SetReviewApprovalAsync(review.Id, new SetReviewApprovalRequest(!review.IsApproved));
+        await LoadAsync();
+    }
+
+    private async Task AssignRoleAsync(AdminUserDto user)
+    {
+        var roleName = roleDrafts.TryGetValue(user.Id, out var value) ? value : "Customer";
+        await AdminApi.AssignRoleAsync(new AssignRoleRequest(user.Id, roleName));
+        await LoadAsync();
+    }
+}

@@ -1,0 +1,326 @@
+@page "/admin/cms"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>مدیریت محتوا | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>مدیریت محتوا</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <div class="admin-grid">
+        <section class="admin-card">
+            <h2>تنظیمات سایت</h2>
+            <form class="admin-form" @onsubmit="SaveSettingsAsync" @onsubmit:preventDefault>
+                <label>نام سایت <input @bind="settingsForm.SiteName" /></label>
+                <label>آدرس لوگو <input @bind="settingsForm.LogoUrl" /></label>
+                <label>ایمیل پشتیبانی <input @bind="settingsForm.SupportEmail" /></label>
+                <label>تلفن پشتیبانی <input @bind="settingsForm.SupportPhone" /></label>
+                <label>آدرس <textarea @bind="settingsForm.Address"></textarea></label>
+                <label>عنوان SEO <input @bind="settingsForm.SeoTitle" /></label>
+                <label>توضیحات SEO <textarea @bind="settingsForm.SeoDescription"></textarea></label>
+                <button class="button button--primary" type="submit">ذخیره تنظیمات</button>
+            </form>
+        </section>
+
+        <section class="admin-card">
+            <h2>@(sliderId is null ? "اسلایدر جدید" : "ویرایش اسلایدر")</h2>
+            <form class="admin-form" @onsubmit="SaveSliderAsync" @onsubmit:preventDefault>
+                <label>عنوان <input @bind="sliderForm.Title" /></label>
+                <label>زیرعنوان <textarea @bind="sliderForm.Subtitle"></textarea></label>
+                <label>آدرس تصویر <input @bind="sliderForm.ImageUrl" /></label>
+                <label>آدرس لینک <input @bind="sliderForm.LinkUrl" /></label>
+                <label>ترتیب <input type="number" @bind="sliderForm.DisplayOrder" /></label>
+                <label class="check-row"><input type="checkbox" @bind="sliderForm.IsActive" /> فعال</label>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره اسلایدر</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetSlider">جدید</button>
+                </div>
+            </form>
+            <div class="admin-table">
+                @foreach (var slider in sliders)
+                {
+                    <div class="admin-table__row">
+                        <span>@slider.Title</span>
+                        <span>@slider.DisplayOrder</span>
+                        <button class="button button--ghost" type="button" @onclick="() => EditSlider(slider)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteSliderAsync(slider.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="admin-card">
+            <h2>@(pageId is null ? "صفحه جدید" : "ویرایش صفحه")</h2>
+            <form class="admin-form" @onsubmit="SavePageAsync" @onsubmit:preventDefault>
+                <label>کلید <input @bind="pageForm.Key" /></label>
+                <label>عنوان <input @bind="pageForm.Title" /></label>
+                <label>اسلاگ <input @bind="pageForm.Slug" /></label>
+                <label>محتوا <textarea @bind="pageForm.Content"></textarea></label>
+                <label>عنوان متا <input @bind="pageForm.MetaTitle" /></label>
+                <label>توضیحات متا <textarea @bind="pageForm.MetaDescription"></textarea></label>
+                <label class="check-row"><input type="checkbox" @bind="pageForm.IsPublished" /> منتشر شده</label>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره صفحه</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetPage">جدید</button>
+                </div>
+            </form>
+            <div class="admin-table">
+                @foreach (var contentPage in pages)
+                {
+                    <div class="admin-table__row">
+                        <span>@contentPage.Key</span>
+                        <span>@contentPage.Title</span>
+                        <button class="button button--ghost" type="button" @onclick="() => EditPage(contentPage)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeletePageAsync(contentPage.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="admin-card">
+            <h2>@(qrId is null ? "لینک QR جدید" : "ویرایش لینک QR")</h2>
+            <form class="admin-form" @onsubmit="SaveQrAsync" @onsubmit:preventDefault>
+                <label>برچسب <input @bind="qrForm.Label" /></label>
+                <label>آدرس مقصد <input @bind="qrForm.TargetUrl" /></label>
+                <label class="check-row"><input type="checkbox" @bind="qrForm.IsActive" /> فعال</label>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره QR</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetQr">جدید</button>
+                </div>
+            </form>
+            <div class="admin-table">
+                @foreach (var link in qrLinks)
+                {
+                    <div class="admin-table__row">
+                        <span>@link.Label</span>
+                        <span>@link.ProductCount محصول</span>
+                        <button class="button button--ghost" type="button" @onclick="() => EditQr(link)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteQrAsync(link.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+
+</section>
+
+@code {
+    private IReadOnlyList<AdminSliderDto> sliders = Array.Empty<AdminSliderDto>();
+    private IReadOnlyList<AdminPageDto> pages = Array.Empty<AdminPageDto>();
+    private IReadOnlyList<AdminQrLinkDto> qrLinks = Array.Empty<AdminQrLinkDto>();
+    private SettingsForm settingsForm = new();
+    private SliderForm sliderForm = new();
+    private PageForm pageForm = new();
+    private QrForm qrForm = new();
+    private Guid? sliderId;
+    private Guid? pageId;
+    private Guid? qrId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        var settings = await AdminApi.GetSettingsAsync();
+        settingsForm = new SettingsForm
+        {
+            SiteName = settings.SiteName,
+            LogoUrl = settings.LogoUrl,
+            SupportEmail = settings.SupportEmail,
+            SupportPhone = settings.SupportPhone,
+            Address = settings.Address,
+            SeoTitle = settings.SeoTitle,
+            SeoDescription = settings.SeoDescription
+        };
+        sliders = await AdminApi.GetSlidersAsync();
+        pages = await AdminApi.GetPagesAsync();
+        qrLinks = await AdminApi.GetQrLinksAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        await AdminApi.UpdateSettingsAsync(new UpdateWebsiteSettingsRequest(
+            settingsForm.SiteName,
+            settingsForm.LogoUrl,
+            settingsForm.SupportEmail,
+            settingsForm.SupportPhone,
+            settingsForm.Address,
+            settingsForm.SeoTitle,
+            settingsForm.SeoDescription));
+        await LoadAsync();
+    }
+
+    private async Task SaveSliderAsync()
+    {
+        await AdminApi.SaveSliderAsync(sliderId, new UpsertSliderRequest(
+            sliderForm.Title,
+            sliderForm.Subtitle,
+            sliderForm.ImageUrl,
+            sliderForm.LinkUrl,
+            sliderForm.DisplayOrder,
+            sliderForm.IsActive));
+        ResetSlider();
+        await LoadAsync();
+    }
+
+    private async Task SavePageAsync()
+    {
+        await AdminApi.SavePageAsync(pageId, new UpsertPageRequest(
+            pageForm.Key,
+            pageForm.Title,
+            pageForm.Slug,
+            pageForm.Content,
+            pageForm.MetaTitle,
+            pageForm.MetaDescription,
+            pageForm.IsPublished));
+        ResetPage();
+        await LoadAsync();
+    }
+
+    private async Task SaveQrAsync()
+    {
+        await AdminApi.SaveQrLinkAsync(qrId, new UpsertQrLinkRequest(
+            qrForm.TargetUrl,
+            qrForm.Label,
+            qrForm.IsActive));
+        ResetQr();
+        await LoadAsync();
+    }
+
+    private void EditSlider(AdminSliderDto slider)
+    {
+        sliderId = slider.Id;
+        sliderForm = new SliderForm
+        {
+            Title = slider.Title,
+            Subtitle = slider.Subtitle,
+            ImageUrl = slider.ImageUrl,
+            LinkUrl = slider.LinkUrl,
+            DisplayOrder = slider.DisplayOrder,
+            IsActive = slider.IsActive
+        };
+    }
+
+    private void EditPage(AdminPageDto page)
+    {
+        pageId = page.Id;
+        pageForm = new PageForm
+        {
+            Key = page.Key,
+            Title = page.Title,
+            Slug = page.Slug,
+            Content = page.Content,
+            MetaTitle = page.MetaTitle,
+            MetaDescription = page.MetaDescription,
+            IsPublished = page.IsPublished
+        };
+    }
+
+    private void EditQr(AdminQrLinkDto link)
+    {
+        qrId = link.Id;
+        qrForm = new QrForm
+        {
+            Label = link.Label,
+            TargetUrl = link.TargetUrl,
+            IsActive = link.IsActive
+        };
+    }
+
+    private async Task DeleteSliderAsync(Guid id)
+    {
+        await AdminApi.DeleteSliderAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task DeletePageAsync(Guid id)
+    {
+        await AdminApi.DeletePageAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task DeleteQrAsync(Guid id)
+    {
+        await AdminApi.DeleteQrLinkAsync(id);
+        await LoadAsync();
+    }
+
+    private void ResetSlider()
+    {
+        sliderId = null;
+        sliderForm = new SliderForm();
+    }
+
+    private void ResetPage()
+    {
+        pageId = null;
+        pageForm = new PageForm();
+    }
+
+    private void ResetQr()
+    {
+        qrId = null;
+        qrForm = new QrForm();
+    }
+
+    private sealed class SettingsForm
+    {
+        public string SiteName { get; set; } = "فروشگاه نادر";
+        public string? LogoUrl { get; set; }
+        public string? SupportEmail { get; set; }
+        public string? SupportPhone { get; set; }
+        public string? Address { get; set; }
+        public string? SeoTitle { get; set; }
+        public string? SeoDescription { get; set; }
+    }
+
+    private sealed class SliderForm
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Subtitle { get; set; }
+        public string ImageUrl { get; set; } = string.Empty;
+        public string? LinkUrl { get; set; }
+        public int DisplayOrder { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    private sealed class PageForm
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public string? MetaTitle { get; set; }
+        public string? MetaDescription { get; set; }
+        public bool IsPublished { get; set; } = true;
+    }
+
+    private sealed class QrForm
+    {
+        public string TargetUrl { get; set; } = string.Empty;
+        public string? Label { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

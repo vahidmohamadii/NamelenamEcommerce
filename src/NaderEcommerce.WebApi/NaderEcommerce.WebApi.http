@@ -1,0 +1,6 @@
+@NaderEcommerce.WebApi_HostAddress = http://localhost:5111
+
+GET {{NaderEcommerce.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,173 @@
+@page "/checkout"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>تسویه حساب | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">مرحله نهایی</p>
+    <h1>تسویه حساب</h1>
+    <p>اطلاعات ارسال را ثبت کن و به صفحه پرداخت شبیه‌سازی‌شده برو.</p>
+</section>
+
+<section class="commerce-shell">
+    @if (!Session.IsAuthenticated)
+    {
+        <div class="notice-action">
+            <div class="notice">برای ادامه پرداخت ابتدا وارد حساب کاربری شو.</div>
+            <a class="button button--primary" href="@SignInUrl">ورود</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading-line">در حال آماده‌سازی checkout...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice">@message</div>
+    }
+    else if (summary is null || summary.Items.Count == 0)
+    {
+        <div class="empty-state">سبد خرید خالی است.</div>
+    }
+    else
+    {
+        <div class="commerce-main">
+            <div class="commerce-card">
+                <h2>اطلاعات گیرنده</h2>
+                <EditForm Model="checkout" OnValidSubmit="SubmitAsync">
+                    <div class="auth-form">
+                        <label>
+                            نام و نام خانوادگی
+                            <InputText @bind-Value="checkout.CustomerFullName" />
+                        </label>
+                        <label>
+                            ایمیل
+                            <InputText @bind-Value="checkout.CustomerEmail" type="email" />
+                        </label>
+                        <label>
+                            شماره تماس
+                            <InputText @bind-Value="checkout.CustomerPhoneNumber" />
+                        </label>
+                        <label>
+                            آدرس ارسال
+                            <InputTextArea @bind-Value="checkout.ShippingAddress" />
+                        </label>
+                        <label>
+                            کد پستی
+                            <InputText @bind-Value="checkout.PostalCode" />
+                        </label>
+                        <label>
+                            توضیحات سفارش
+                            <InputTextArea @bind-Value="checkout.Notes" />
+                        </label>
+
+                        <button class="button button--primary" type="submit" disabled="@isSubmitting">
+                            @(isSubmitting ? "در حال انتقال..." : "رفتن به پرداخت")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        <aside class="commerce-summary">
+            <div class="commerce-card">
+                <h2>خلاصه سفارش</h2>
+                <div class="summary-list">
+                    <div><span>جمع کالا</span><strong>@FormatPrice(summary.Subtotal)</strong></div>
+                    <div><span>تخفیف</span><strong>@FormatPrice(summary.DiscountAmount)</strong></div>
+                    <div><span>ارسال</span><strong>@FormatPrice(summary.ShippingAmount)</strong></div>
+                    <div><span>مالیات</span><strong>@FormatPrice(summary.TaxAmount)</strong></div>
+                    <div class="summary-list__total"><span>مبلغ نهایی</span><strong>@FormatPrice(summary.TotalAmount)</strong></div>
+                </div>
+            </div>
+        </aside>
+    }
+</section>
+
+@code {
+    private ShoppingCartDto? summary;
+    private CheckoutFormModel checkout = new();
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? message;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "checkout");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        checkout.CustomerFullName = Session.Current?.User.FullName ?? string.Empty;
+        checkout.CustomerEmail = Session.Current?.User.Email ?? string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        message = null;
+
+        try
+        {
+            summary = await StorefrontApi.GetCheckoutSummaryAsync();
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        message = null;
+
+        try
+        {
+            var session = await StorefrontApi.CheckoutAsync(new CheckoutRequest(
+                checkout.CustomerFullName,
+                checkout.CustomerEmail,
+                checkout.CustomerPhoneNumber,
+                checkout.ShippingAddress,
+                checkout.PostalCode,
+                checkout.Notes));
+
+            Navigation.NavigateTo(session.Payment.PaymentUrl);
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+
+    private sealed class CheckoutFormModel
+    {
+        public string CustomerFullName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
+        public string? CustomerPhoneNumber { get; set; }
+        public string ShippingAddress { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public string? Notes { get; set; }
+    }
+}

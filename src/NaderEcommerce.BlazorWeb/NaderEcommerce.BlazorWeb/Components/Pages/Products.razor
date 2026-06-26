@@ -1,0 +1,197 @@
+@page "/products"
+@rendermode InteractiveServer
+@inject CatalogApiClient CatalogApi
+@inject NavigationManager Navigation
+@using System.Globalization
+
+<PageTitle>محصولات | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">کاتالوگ فروشگاه</p>
+    <h1>محصولات</h1>
+    <p>جست‌وجو، فیلتر و مقایسه سریع محصولات فعال فروشگاه.</p>
+</section>
+
+<section class="catalog-shell">
+    <aside class="filter-panel">
+        <form @onsubmit="ApplyFilters" @onsubmit:preventDefault>
+            <label>
+                جست‌وجو
+                <input type="search" @bind="draftSearch" placeholder="نام محصول یا SKU" />
+            </label>
+
+            <label>
+                دسته‌بندی
+                <select @bind="draftCategorySlug">
+                    <option value="">همه دسته‌ها</option>
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.Slug">@category.Name</option>
+                    }
+                </select>
+            </label>
+
+            <div class="filter-panel__grid">
+                <label>
+                    از قیمت
+                    <input type="number" min="0" step="10000" @bind="draftMinPrice" />
+                </label>
+                <label>
+                    تا قیمت
+                    <input type="number" min="0" step="10000" @bind="draftMaxPrice" />
+                </label>
+            </div>
+
+            <label>
+                مرتب‌سازی
+                <select @bind="draftSort">
+                    <option value="">پیشنهادی</option>
+                    <option value="newest">جدیدترین</option>
+                    <option value="price_asc">ارزان‌ترین</option>
+                    <option value="price_desc">گران‌ترین</option>
+                    <option value="name">نام محصول</option>
+                </select>
+            </label>
+
+            <label class="check-row">
+                <input type="checkbox" @bind="draftInStockOnly" />
+                فقط کالاهای موجود
+            </label>
+
+            <button class="button button--primary" type="submit">اعمال فیلتر</button>
+            <a class="button button--ghost" href="products">حذف فیلتر</a>
+        </form>
+    </aside>
+
+    <div class="catalog-results">
+        @if (isLoading)
+        {
+            <div class="loading-line">در حال دریافت محصولات...</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="notice">@errorMessage</div>
+        }
+        else if (products is null || products.Items.Count == 0)
+        {
+            <div class="empty-state">محصولی با این فیلترها پیدا نشد.</div>
+        }
+        else
+        {
+            <div class="result-toolbar">
+                <span>@products.TotalCount محصول</span>
+                <span>صفحه @products.PageNumber از @Math.Max(products.TotalPages, 1)</span>
+            </div>
+
+            <div class="product-grid">
+                @foreach (var product in products.Items)
+                {
+                    <ProductCard Product="product" />
+                }
+            </div>
+
+            <div class="pager">
+                <a class="@PagerClass(products.HasPreviousPage)" href="@BuildProductsUrl(products.PageNumber - 1)">قبلی</a>
+                <span>@products.PageNumber</span>
+                <a class="@PagerClass(products.HasNextPage)" href="@BuildProductsUrl(products.PageNumber + 1)">بعدی</a>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "q")]
+    public string? Search { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public string? CategorySlug { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public decimal? MinPrice { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public decimal? MaxPrice { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public bool InStockOnly { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public string? Sort { get; set; }
+
+    [Parameter, SupplyParameterFromQuery]
+    public int PageNumber { get; set; } = 1;
+
+    private IReadOnlyList<CategoryDto> categories = Array.Empty<CategoryDto>();
+    private PagedResult<ProductCardDto>? products;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? draftSearch;
+    private string? draftCategorySlug;
+    private decimal? draftMinPrice;
+    private decimal? draftMaxPrice;
+    private bool draftInStockOnly;
+    private string? draftSort;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        draftSearch = Search;
+        draftCategorySlug = CategorySlug;
+        draftMinPrice = MinPrice;
+        draftMaxPrice = MaxPrice;
+        draftInStockOnly = InStockOnly;
+        draftSort = Sort;
+
+        try
+        {
+            categories = await CatalogApi.GetCategoriesAsync();
+            products = await CatalogApi.GetProductsAsync(new ProductCatalogQuery
+            {
+                Search = Search,
+                CategorySlug = CategorySlug,
+                MinPrice = MinPrice,
+                MaxPrice = MaxPrice,
+                InStockOnly = InStockOnly,
+                Sort = Sort,
+                PageNumber = Math.Max(1, PageNumber),
+                PageSize = 12
+            });
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API کاتالوگ در دسترس نیست. پروژه WebApi را هم اجرا کن.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        Navigation.NavigateTo(BuildProductsUrl(1));
+    }
+
+    private string BuildProductsUrl(int pageNumber)
+    {
+        var query = new Dictionary<string, object?>
+        {
+            ["q"] = string.IsNullOrWhiteSpace(draftSearch) ? null : draftSearch,
+            ["categorySlug"] = string.IsNullOrWhiteSpace(draftCategorySlug) ? null : draftCategorySlug,
+            ["minPrice"] = draftMinPrice,
+            ["maxPrice"] = draftMaxPrice,
+            ["inStockOnly"] = draftInStockOnly ? true : null,
+            ["sort"] = string.IsNullOrWhiteSpace(draftSort) ? null : draftSort,
+            ["pageNumber"] = pageNumber > 1 ? pageNumber : null
+        };
+
+        return Navigation.GetUriWithQueryParameters("/products", query);
+    }
+
+    private static string PagerClass(bool isEnabled)
+    {
+        return isEnabled ? "pager__link" : "pager__link pager__link--disabled";
+    }
+}

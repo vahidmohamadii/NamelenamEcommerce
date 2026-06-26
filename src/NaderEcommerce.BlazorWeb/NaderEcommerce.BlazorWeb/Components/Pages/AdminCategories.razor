@@ -1,0 +1,152 @@
+@page "/admin/categories"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>مدیریت دسته‌بندی‌ها | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>دسته‌بندی‌ها</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <div class="admin-grid">
+        <section class="admin-card">
+            <h2>@(editingId is null ? "دسته‌بندی جدید" : "ویرایش دسته‌بندی")</h2>
+            <form class="admin-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <label>نام <input @bind="form.Name" /></label>
+                <label>اسلاگ <input @bind="form.Slug" /></label>
+                <label>توضیحات <textarea @bind="form.Description"></textarea></label>
+                <label>
+                    والد
+                    <select @bind="form.ParentCategoryIdText">
+                        <option value="">بدون والد</option>
+                        @foreach (var category in categories.Where(category => category.Id != editingId))
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </label>
+                <label>ترتیب نمایش <input type="number" @bind="form.SortOrder" /></label>
+                <label class="check-row"><input type="checkbox" @bind="form.IsActive" /> فعال</label>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetForm">جدید</button>
+                </div>
+            </form>
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="notice">@message</div>
+            }
+        </section>
+
+        <section class="admin-card">
+            <h2>فهرست دسته‌بندی‌ها</h2>
+            <div class="admin-table">
+                @foreach (var category in categories)
+                {
+                    <div class="admin-table__row">
+                        <span>@category.Name</span>
+                        <span>@category.Slug</span>
+                        <span>@category.ProductCount محصول</span>
+                        <button class="button button--ghost" type="button" @onclick="() => Edit(category)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteAsync(category.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<AdminCategoryDto> categories = Array.Empty<AdminCategoryDto>();
+    private CategoryForm form = new();
+    private Guid? editingId;
+    private string? message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        categories = await AdminApi.GetCategoriesAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+        try
+        {
+            var request = new UpsertCategoryRequest(
+                form.Name,
+                form.Slug,
+                form.Description,
+                string.IsNullOrWhiteSpace(form.ParentCategoryIdText) ? null : Guid.Parse(form.ParentCategoryIdText),
+                form.IsActive,
+                form.SortOrder);
+
+            await AdminApi.SaveCategoryAsync(editingId, request);
+            ResetForm();
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is StorefrontApiException or FormatException)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private void Edit(AdminCategoryDto category)
+    {
+        editingId = category.Id;
+        form = new CategoryForm
+        {
+            Name = category.Name,
+            Slug = category.Slug,
+            Description = category.Description,
+            ParentCategoryIdText = category.ParentCategoryId?.ToString() ?? string.Empty,
+            IsActive = category.IsActive,
+            SortOrder = category.SortOrder
+        };
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        await AdminApi.DeleteCategoryAsync(id);
+        await LoadAsync();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        form = new CategoryForm();
+    }
+
+    private sealed class CategoryForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string ParentCategoryIdText { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public int SortOrder { get; set; }
+    }
+}

@@ -1,0 +1,94 @@
+@page "/mock-payments/{PaymentId:guid}"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
+
+<PageTitle>پرداخت شبیه‌سازی‌شده | فروشگاه نادر</PageTitle>
+
+<section class="auth-shell">
+    <div class="auth-card auth-card--wide">
+        <p class="eyebrow">درگاه آزمایشی</p>
+        <h1>پرداخت آزمایشی</h1>
+        <p class="auth-copy">این مرحله شبیه‌سازی‌شده است. می‌توانی پرداخت را موفق یا ناموفق ثبت کنی.</p>
+
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <div class="notice">@message</div>
+        }
+
+        @if (verifiedOrder is null)
+        {
+            <div class="hero-section__actions">
+                <button class="button button--primary" type="button" @onclick="() => VerifyAsync(true)">تایید پرداخت</button>
+                <button class="button button--ghost" type="button" @onclick="() => VerifyAsync(false)">ثبت پرداخت ناموفق</button>
+            </div>
+        }
+        else
+        {
+            <div class="summary-list">
+                <div><span>شماره سفارش</span><strong>@verifiedOrder.OrderNumber</strong></div>
+                <div><span>وضعیت سفارش</span><strong>@UiText.OrderStatus(verifiedOrder.Status)</strong></div>
+                <div><span>وضعیت پرداخت</span><strong>@UiText.PaymentStatus(verifiedOrder.Payments.Last().Status)</strong></div>
+                <div class="summary-list__total"><span>مبلغ</span><strong>@FormatPrice(verifiedOrder.TotalAmount)</strong></div>
+            </div>
+            <div class="hero-section__actions">
+                <a class="button button--primary" href="@($"/orders/{verifiedOrder.OrderNumber}")">مشاهده سفارش</a>
+                <a class="button button--ghost" href="orders">بازگشت به سفارش‌ها</a>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public Guid PaymentId { get; set; }
+
+    private OrderDetailsDto? verifiedOrder;
+    private string? message;
+    private string? token;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        token = QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query)
+            .TryGetValue("token", out var value)
+            ? value.ToString()
+            : null;
+
+        if (!Session.IsAuthenticated)
+        {
+            Navigation.NavigateTo(QueryHelpers.AddQueryString(
+                "/signin",
+                "returnUrl",
+                Navigation.ToBaseRelativePath(Navigation.Uri)));
+        }
+    }
+
+    private async Task VerifyAsync(bool succeed)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            message = "توکن پرداخت معتبر نیست.";
+            return;
+        }
+
+        try
+        {
+            verifiedOrder = await StorefrontApi.VerifyPaymentAsync(
+                PaymentId,
+                new VerifyPaymentRequest(token, succeed));
+            message = succeed ? "پرداخت با موفقیت ثبت شد." : "پرداخت به‌صورت ناموفق ثبت شد.";
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+}

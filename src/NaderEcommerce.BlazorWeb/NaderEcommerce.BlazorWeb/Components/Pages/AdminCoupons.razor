@@ -1,0 +1,164 @@
+@page "/admin/coupons"
+@rendermode InteractiveServer
+@inject AdminApiClient AdminApi
+@inject StorefrontSessionService Session
+
+<PageTitle>مدیریت کوپن‌ها | فروشگاه نادر</PageTitle>
+
+<section class="admin-shell">
+    <header class="admin-header">
+        <div>
+            <p class="eyebrow">پنل مدیریت</p>
+            <h1>کوپن‌ها</h1>
+        </div>
+        <nav class="admin-tabs">
+            <NavLink href="admin">داشبورد</NavLink>
+            <NavLink href="admin/products">محصولات</NavLink>
+            <NavLink href="admin/categories">دسته‌بندی‌ها</NavLink>
+            <NavLink href="admin/orders">سفارش‌ها</NavLink>
+            <NavLink href="admin/coupons">کوپن‌ها</NavLink>
+            <NavLink href="admin/cms">محتوا</NavLink>
+            <NavLink href="admin/people">کاربران</NavLink>
+        </nav>
+    </header>
+
+    <div class="admin-grid">
+        <section class="admin-card">
+            <h2>@(editingId is null ? "کوپن جدید" : "ویرایش کوپن")</h2>
+            <form class="admin-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <label>کد <input @bind="form.Code" /></label>
+                <div class="admin-form__columns">
+                    <label>مبلغ تخفیف <input type="number" step="1000" @bind="form.DiscountAmount" /></label>
+                    <label>حداقل سفارش <input type="number" step="1000" @bind="form.MinimumOrderAmount" /></label>
+                    <label>سقف استفاده <input type="number" @bind="form.UsageLimit" /></label>
+                </div>
+                <div class="admin-form__columns">
+                    <label>شروع <input type="text" placeholder="2026-06-26 09:00" @bind="form.StartsAtText" /></label>
+                    <label>پایان <input type="text" placeholder="2026-07-26 23:59" @bind="form.EndsAtText" /></label>
+                </div>
+                <label class="check-row"><input type="checkbox" @bind="form.IsActive" /> فعال</label>
+                <div class="admin-actions">
+                    <button class="button button--primary" type="submit">ذخیره</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetForm">جدید</button>
+                </div>
+            </form>
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="notice">@message</div>
+            }
+        </section>
+
+        <section class="admin-card">
+            <h2>فهرست کوپن‌ها</h2>
+            <div class="admin-table">
+                @foreach (var coupon in coupons)
+                {
+                    <div class="admin-table__row admin-table__row--dense">
+                        <span>@coupon.Code</span>
+                        <strong>@coupon.DiscountAmount.ToString("N0")</strong>
+                        <span>@coupon.UsedCount بار استفاده</span>
+                        <span>@(coupon.IsActive ? "فعال" : "غیرفعال")</span>
+                        <button class="button button--ghost" type="button" @onclick="() => Edit(coupon)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteAsync(coupon.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<AdminCouponDto> coupons = Array.Empty<AdminCouponDto>();
+    private CouponForm form = new();
+    private Guid? editingId;
+    private string? message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        coupons = await AdminApi.GetCouponsAsync();
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+        try
+        {
+            var request = new UpsertCouponRequest(
+                form.Code,
+                form.DiscountAmount,
+                form.MinimumOrderAmount,
+                ParseDate(form.StartsAtText),
+                ParseDate(form.EndsAtText),
+                form.UsageLimit,
+                form.IsActive);
+
+            await AdminApi.SaveCouponAsync(editingId, request);
+            ResetForm();
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is StorefrontApiException or FormatException)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private void Edit(AdminCouponDto coupon)
+    {
+        editingId = coupon.Id;
+        form = new CouponForm
+        {
+            Code = coupon.Code,
+            DiscountAmount = coupon.DiscountAmount,
+            MinimumOrderAmount = coupon.MinimumOrderAmount,
+            StartsAtText = FormatDate(coupon.StartsAt),
+            EndsAtText = FormatDate(coupon.EndsAt),
+            UsageLimit = coupon.UsageLimit,
+            IsActive = coupon.IsActive
+        };
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        await AdminApi.DeleteCouponAsync(id);
+        await LoadAsync();
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        form = new CouponForm();
+    }
+
+    private static DateTimeOffset? ParseDate(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : DateTimeOffset.Parse(value);
+    }
+
+    private static string FormatDate(DateTimeOffset? value)
+    {
+        return value?.LocalDateTime.ToString("yyyy-MM-ddTHH:mm") ?? string.Empty;
+    }
+
+    private sealed class CouponForm
+    {
+        public string Code { get; set; } = string.Empty;
+        public decimal DiscountAmount { get; set; }
+        public decimal? MinimumOrderAmount { get; set; }
+        public string StartsAtText { get; set; } = string.Empty;
+        public string EndsAtText { get; set; } = string.Empty;
+        public int? UsageLimit { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

@@ -1,0 +1,131 @@
+@page "/orders/{OrderNumber}"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>جزئیات سفارش | فروشگاه نادر</PageTitle>
+
+@if (!Session.IsAuthenticated)
+{
+    <section class="content-band">
+        <div class="notice-action">
+            <div class="notice">برای دیدن این سفارش ابتدا وارد حساب کاربری شو.</div>
+            <a class="button button--primary" href="@SignInUrl">ورود</a>
+        </div>
+    </section>
+}
+else if (isLoading)
+{
+    <section class="content-band">
+        <div class="loading-line">در حال دریافت جزئیات سفارش...</div>
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(message))
+{
+    <section class="content-band">
+        <div class="notice">@message</div>
+    </section>
+}
+else if (order is not null)
+{
+    <section class="content-band">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">سفارش ثبت‌شده</p>
+                <h2>@order.OrderNumber</h2>
+            </div>
+            <div class="order-status-box">
+                <strong>@UiText.OrderStatus(order.Status)</strong>
+                <span>@FormatPrice(order.TotalAmount)</span>
+            </div>
+        </div>
+
+        <div class="order-detail-grid">
+            <div class="commerce-card">
+                <h3>اقلام سفارش</h3>
+                @foreach (var item in order.Items)
+                {
+                    <div class="order-line">
+                        <div>
+                            <strong>@item.ProductName</strong>
+                            <span>@item.Sku</span>
+                        </div>
+                        <div>
+                            <span>@item.Quantity x @FormatPrice(item.UnitPrice)</span>
+                            <strong>@FormatPrice(item.TotalPrice)</strong>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="commerce-card">
+                <h3>ارسال و پرداخت</h3>
+                <div class="summary-list">
+                    <div><span>گیرنده</span><strong>@order.CustomerFullName</strong></div>
+                    <div><span>ایمیل</span><strong>@order.CustomerEmail</strong></div>
+                    <div><span>تماس</span><strong>@(order.CustomerPhoneNumber ?? "-")</strong></div>
+                    <div><span>آدرس</span><strong>@order.ShippingAddress</strong></div>
+                    <div><span>کوپن</span><strong>@(order.CouponCode ?? "-")</strong></div>
+                </div>
+
+                <h3>پرداخت‌ها</h3>
+                @foreach (var payment in order.Payments)
+                {
+                    <div class="order-line">
+                        <div>
+                            <strong>@payment.GatewayName</strong>
+                            <span>@UiText.PaymentStatus(payment.Status)</span>
+                        </div>
+                        <div>
+                            <span>@(payment.GatewayTransactionId ?? "-")</span>
+                            <strong>@FormatPrice(payment.Amount)</strong>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    private OrderDetailsDto? order;
+    private bool isLoading = true;
+    private string? message;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", $"orders/{OrderNumber}");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        isLoading = true;
+        message = null;
+
+        try
+        {
+            order = await StorefrontApi.GetOrderAsync(OrderNumber);
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+}

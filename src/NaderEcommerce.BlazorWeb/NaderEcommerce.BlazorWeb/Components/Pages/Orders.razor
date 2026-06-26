@@ -1,0 +1,89 @@
+@page "/orders"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>سفارش‌های من | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">پیگیری خرید</p>
+    <h1>سفارش‌های من</h1>
+    <p>وضعیت سفارش‌ها و پرداخت‌های ثبت‌شده را یکجا ببین.</p>
+</section>
+
+<section class="content-band">
+    @if (!Session.IsAuthenticated)
+    {
+        <div class="notice-action">
+            <div class="notice">برای دیدن سفارش‌ها ابتدا وارد حساب کاربری شو.</div>
+            <a class="button button--primary" href="@SignInUrl">ورود</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت سفارش‌ها...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice">@message</div>
+    }
+    else if (orders.Count == 0)
+    {
+        <div class="empty-state">هنوز سفارشی ثبت نشده است.</div>
+    }
+    else
+    {
+        <div class="order-list">
+            @foreach (var order in orders)
+            {
+                <a class="order-card" href="@($"/orders/{order.OrderNumber}")">
+                    <div>
+                        <strong>@order.OrderNumber</strong>
+                        <span>@order.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", CultureInfo.InvariantCulture)</span>
+                    </div>
+                    <div>
+                        <strong>@FormatPrice(order.TotalAmount)</strong>
+                        <span>@UiText.OrderStatus(order.Status) / @UiText.PaymentStatus(order.PaymentStatus)</span>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<OrderSummaryDto> orders = Array.Empty<OrderSummaryDto>();
+    private bool isLoading = true;
+    private string? message;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "orders");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            orders = await StorefrontApi.GetOrdersAsync();
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+}

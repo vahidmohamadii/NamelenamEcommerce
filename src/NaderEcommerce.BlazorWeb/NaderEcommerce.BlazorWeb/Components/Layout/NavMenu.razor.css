@@ -1,0 +1,131 @@
+.store-nav {
+    align-items: center;
+    display: flex;
+    gap: 1.25rem;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: 1180px;
+    min-height: 72px;
+    padding: 0 1.25rem;
+}
+
+.store-nav__brand {
+    align-items: center;
+    color: #211c1b;
+    display: inline-flex;
+    font-weight: 800;
+    gap: 0.7rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.store-nav__mark {
+    align-items: center;
+    background: #a0183a;
+    border-radius: 6px;
+    color: #fff;
+    display: inline-flex;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+}
+
+.store-nav__links {
+    align-items: center;
+    display: flex;
+    gap: 0.35rem;
+}
+
+.store-nav__link {
+    border-radius: 6px;
+    color: #4b4240;
+    display: inline-flex;
+    font-size: 0.95rem;
+    padding: 0.65rem 0.9rem;
+    text-decoration: none;
+}
+
+.store-nav__link:hover,
+.store-nav__link.active {
+    background: #f1e5df;
+    color: #a0183a;
+}
+
+.store-nav__action {
+    border: 1px solid #211c1b;
+    border-radius: 6px;
+    color: #211c1b;
+    font-weight: 700;
+    padding: 0.65rem 1rem;
+    text-decoration: none;
+}
+
+.store-nav__account {
+    align-items: center;
+    display: flex;
+    gap: 0.6rem;
+}
+
+.store-nav__user {
+    color: #6f6461;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.store-nav__secondary {
+    background: transparent;
+    border: 1px solid rgba(33, 28, 27, 0.18);
+    border-radius: 6px;
+    color: #211c1b;
+    cursor: pointer;
+    font-weight: 700;
+    min-height: 42px;
+    padding: 0.65rem 0.9rem;
+    text-decoration: none;
+}
+
+.store-nav__toggle,
+.store-nav__toggle-button {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    .store-nav {
+        flex-wrap: wrap;
+    }
+
+    .store-nav__toggle-button {
+        cursor: pointer;
+        display: inline-flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.6rem;
+    }
+
+    .store-nav__toggle-button span {
+        background: #211c1b;
+        display: block;
+        height: 2px;
+        width: 24px;
+    }
+
+    .store-nav__links {
+        align-items: stretch;
+        display: none;
+        flex-basis: 100%;
+        flex-direction: column;
+    }
+
+    .store-nav__toggle:checked ~ .store-nav__links {
+        display: flex;
+    }
+
+    .store-nav__action {
+        display: none;
+    }
+
+    .store-nav__account {
+        justify-content: flex-end;
+        width: 100%;
+    }
+}

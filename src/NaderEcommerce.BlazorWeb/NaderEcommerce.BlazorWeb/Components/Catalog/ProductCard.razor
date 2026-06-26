@@ -1,0 +1,59 @@
+@using System.Globalization
+
+<article class="product-card">
+    <a class="product-card__media" href="@ProductUrl">
+        @if (!string.IsNullOrWhiteSpace(Product.PrimaryImageUrl))
+        {
+            <img src="@Product.PrimaryImageUrl" alt="@Product.Name" loading="lazy" />
+        }
+        else
+        {
+            <div class="product-card__empty">@Product.Name</div>
+        }
+        @if (Product.DiscountPrice is not null)
+        {
+            <span class="product-card__badge">تخفیف</span>
+        }
+    </a>
+
+    <div class="product-card__body">
+        <div class="product-card__meta">
+            <span>@(Product.Categories.FirstOrDefault() ?? "کاتالوگ")</span>
+            <span>@Product.Sku</span>
+        </div>
+        <h3><a href="@ProductUrl">@Product.Name</a></h3>
+        <div class="product-card__price-row">
+            <strong>@FormatPrice(Product.DiscountPrice ?? Product.Price)</strong>
+            @if (Product.DiscountPrice is not null)
+            {
+                <span>@FormatPrice(Product.Price)</span>
+            }
+        </div>
+        <div class="product-card__footer">
+            <span class="@StockClass">@StockText</span>
+            <a class="icon-link" href="@ProductUrl" aria-label="مشاهده @Product.Name">مشاهده</a>
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public ProductCardDto Product { get; set; } = null!;
+
+    private string ProductUrl => $"/products/{Product.Slug}";
+
+    private string StockClass => Product.Stock > 0
+        ? "stock stock--available"
+        : "stock stock--empty";
+
+    private string StockText => Product.Stock > 0
+        ? $"موجودی {Product.Stock}"
+        : "ناموجود";
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(
+            CultureInfo.GetCultureInfo("fa-IR"),
+            $"{value:N0} تومان");
+    }
+}

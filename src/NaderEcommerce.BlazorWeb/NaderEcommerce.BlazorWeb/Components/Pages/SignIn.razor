@@ -1,0 +1,99 @@
+@page "/signin"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>ورود | فروشگاه نادر</PageTitle>
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <p class="eyebrow">حساب مشتری</p>
+        <h1>ورود</h1>
+        <p class="auth-copy">برای مشاهده سفارش‌ها، سبد خرید و ادامه پرداخت وارد حساب کاربری‌ات شو.</p>
+
+        <EditForm Model="request" OnValidSubmit="SubmitAsync">
+            <div class="auth-form">
+                <label>
+                    ایمیل
+                    <InputText @bind-Value="request.Email" type="email" />
+                </label>
+                <label>
+                    رمز عبور
+                    <InputText @bind-Value="request.Password" type="password" />
+                </label>
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="notice">@errorMessage</div>
+                }
+
+                <button class="button button--primary" type="submit" disabled="@isSubmitting">
+                    @(isSubmitting ? "در حال ورود..." : "ورود به حساب")
+                </button>
+            </div>
+        </EditForm>
+
+        <p class="auth-link-row">
+            حساب نداری؟
+            <a href="@BuildRegisterUrl()">ثبت‌نام</a>
+        </p>
+    </div>
+</section>
+
+@code {
+    [Parameter, SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private LoginFormModel request = new();
+    private bool isSubmitting;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (Session.IsAuthenticated)
+        {
+            Navigation.NavigateTo(NormalizeReturnUrl());
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await StorefrontApi.LoginAsync(new LoginRequest(request.Email, request.Password));
+            await Session.SignInAsync(response);
+            Navigation.NavigateTo(NormalizeReturnUrl());
+        }
+        catch (StorefrontApiException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string BuildRegisterUrl()
+    {
+        return string.IsNullOrWhiteSpace(ReturnUrl)
+            ? "/register"
+            : QueryHelpers.AddQueryString("/register", "returnUrl", ReturnUrl);
+    }
+
+    private string NormalizeReturnUrl()
+    {
+        return string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : $"/{ReturnUrl.TrimStart('/')}";
+    }
+
+    private sealed class LoginFormModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

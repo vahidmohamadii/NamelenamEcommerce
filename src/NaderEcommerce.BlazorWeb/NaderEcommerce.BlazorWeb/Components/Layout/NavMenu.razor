@@ -1,0 +1,94 @@
+@inject NavigationManager Navigation
+@inject StorefrontSessionService Session
+@inject StorefrontApiClient StorefrontApi
+@implements IDisposable
+@using Microsoft.AspNetCore.WebUtilities
+
+<nav class="store-nav">
+    <a class="store-nav__brand" href="">
+        <span class="store-nav__mark">N</span>
+        <span>فروشگاه نادر</span>
+    </a>
+
+    <input id="nav-toggle" type="checkbox" title="باز کردن منو" class="store-nav__toggle" />
+    <label class="store-nav__toggle-button" for="nav-toggle" aria-label="باز کردن منو">
+        <span></span>
+        <span></span>
+        <span></span>
+    </label>
+
+    <div class="store-nav__links" onclick="document.getElementById('nav-toggle')?.click()">
+        <NavLink class="store-nav__link" href="" Match="NavLinkMatch.All">خانه</NavLink>
+        <NavLink class="store-nav__link" href="products">محصولات</NavLink>
+        <NavLink class="store-nav__link" href="categories">دسته‌بندی‌ها</NavLink>
+        <NavLink class="store-nav__link" href="about-us">درباره ما</NavLink>
+        <NavLink class="store-nav__link" href="contact-us">تماس با ما</NavLink>
+        <NavLink class="store-nav__link" href="wishlist">علاقه‌مندی‌ها</NavLink>
+        <NavLink class="store-nav__link" href="cart">سبد خرید</NavLink>
+        <NavLink class="store-nav__link" href="orders">سفارش‌های من</NavLink>
+        @if (Session.Current?.User.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            <NavLink class="store-nav__link" href="admin">مدیریت</NavLink>
+        }
+    </div>
+
+    <div class="store-nav__account">
+        @if (Session.IsAuthenticated && Session.Current is not null)
+        {
+            <span class="store-nav__user">@Session.Current.User.FullName</span>
+            <button class="store-nav__secondary" type="button" @onclick="SignOutAsync">خروج</button>
+        }
+        else
+        {
+            <a class="store-nav__secondary" href="@BuildReturnUrl("/signin")">ورود</a>
+            <a class="store-nav__action" href="@BuildReturnUrl("/register")">حساب جدید</a>
+        }
+    </div>
+</nav>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Session.Changed += OnSessionChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Session.EnsureInitializedAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= OnSessionChanged;
+    }
+
+    private async Task SignOutAsync()
+    {
+        try
+        {
+            await StorefrontApi.LogoutAsync();
+        }
+        catch (StorefrontApiException)
+        {
+        }
+
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("/");
+    }
+
+    private void OnSessionChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string BuildReturnUrl(string path)
+    {
+        return QueryHelpers.AddQueryString(
+            path,
+            "returnUrl",
+            Navigation.ToBaseRelativePath(Navigation.Uri));
+    }
+}

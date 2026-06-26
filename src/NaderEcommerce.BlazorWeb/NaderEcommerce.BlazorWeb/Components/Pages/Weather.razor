@@ -1,0 +1,63 @@
+﻿@page "/weather"
+@attribute [StreamRendering]
+
+<PageTitle>آب‌وهوا</PageTitle>
+
+<h1>آب‌وهوا</h1>
+
+<p>این صفحه نمونه‌ای برای نمایش داده‌های آزمایشی است.</p>
+
+@if (forecasts == null)
+{
+    <p><em>در حال بارگذاری...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>تاریخ</th>
+                <th>دما (C)</th>
+                <th>دما (F)</th>
+                <th>خلاصه</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(500);
+
+        var startDate = DateOnly.FromDateTime(DateTime.Now);
+        var summaries = new[] { "یخبندان", "خیلی سرد", "سرد", "خنک", "ملایم", "گرم", "مطبوع", "داغ", "خیلی گرم", "سوزان" };
+        forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        {
+            Date = startDate.AddDays(index),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToArray();
+    }
+
+    private class WeatherForecast
+    {
+        public DateOnly Date { get; set; }
+        public int TemperatureC { get; set; }
+        public string? Summary { get; set; }
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    }
+}

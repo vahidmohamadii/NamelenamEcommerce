@@ -1,0 +1,114 @@
+@page "/"
+@inject CatalogApiClient CatalogApi
+@inject CmsApiClient CmsApi
+
+<PageTitle>@(settings?.SeoTitle ?? settings?.SiteName ?? "فروشگاه نادر")</PageTitle>
+
+<section class="hero-section" style="@HeroStyle">
+    <div class="hero-section__content">
+        <p class="eyebrow">کاتالوگ زیبایی</p>
+        <h1>@(heroSlider?.Title ?? settings?.SiteName ?? "فروشگاه نادر")</h1>
+        <p>
+            @(heroSlider?.Subtitle ?? settings?.SeoDescription ?? "محصولات منتخب زیبایی با دسته‌بندی روشن، موجودی قابل مشاهده و مسیر خرید ساده.")
+        </p>
+        <div class="hero-section__actions">
+            <a class="button button--primary" href="products">مشاهده محصولات</a>
+            <a class="button button--ghost" href="@(heroSlider?.LinkUrl ?? "categories")">کاوش فروشگاه</a>
+        </div>
+    </div>
+</section>
+
+@if (isLoading)
+{
+    <section class="content-band">
+        <div class="loading-line">در حال دریافت کاتالوگ...</div>
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <section class="content-band">
+        <div class="notice">@errorMessage</div>
+    </section>
+}
+else if (home is not null)
+{
+    <section class="content-band content-band--tight">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">مسیرهای پرکاربرد</p>
+                <h2>دسته‌بندی‌ها</h2>
+            </div>
+            <a class="text-link" href="categories">همه دسته‌ها</a>
+        </div>
+        <div class="category-strip">
+            @foreach (var category in home.Categories)
+            {
+                <a class="category-tile" href="@($"/products?categorySlug={category.Slug}")">
+                    <strong>@category.Name</strong>
+                    <span>@category.ProductCount محصول</span>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="content-band">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">پیشنهاد ویترین</p>
+                <h2>محصولات شاخص</h2>
+            </div>
+            <a class="text-link" href="products?sort=newest">تازه‌ترین‌ها</a>
+        </div>
+        <div class="product-grid">
+            @foreach (var product in home.FeaturedProducts)
+            {
+                <ProductCard Product="product" />
+            }
+        </div>
+    </section>
+
+    <section class="content-band content-band--muted">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">پرفروش‌ها</p>
+                <h2>انتخاب‌های محبوب</h2>
+            </div>
+        </div>
+        <div class="product-grid product-grid--compact">
+            @foreach (var product in home.BestSellers)
+            {
+                <ProductCard Product="product" />
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private CatalogHomeDto? home;
+    private CmsWebsiteSettingsDto? settings;
+    private CmsSliderDto? heroSlider;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private string HeroStyle => heroSlider is null
+        ? string.Empty
+        : $"background: linear-gradient(90deg, rgba(33, 28, 27, 0.88), rgba(33, 28, 27, 0.4), rgba(33, 28, 27, 0.08)), url('{heroSlider.ImageUrl}') center/cover;";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            settings = await CmsApi.GetSettingsAsync();
+            heroSlider = (await CmsApi.GetSlidersAsync()).FirstOrDefault();
+            home = await CatalogApi.GetHomeAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API در دسترس نیست. پروژه WebApi را هم اجرا کن.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,199 @@
+@page "/cart"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>سبد خرید | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">مرحله خرید</p>
+    <h1>سبد خرید</h1>
+    <p>تعداد، کوپن و جمع سفارش را قبل از ورود به checkout نهایی کن.</p>
+</section>
+
+<section class="commerce-shell">
+    @if (!Session.IsAuthenticated)
+    {
+        <div class="notice-action">
+            <div class="notice">برای مدیریت سبد خرید ابتدا وارد حساب کاربری شو.</div>
+            <a class="button button--primary" href="@SignInUrl">ورود</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت سبد خرید...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice">@message</div>
+    }
+    else if (cart is null || cart.Items.Count == 0)
+    {
+        <div class="empty-state">سبد خرید خالی است. از کاتالوگ محصول انتخاب کن.</div>
+    }
+    else
+    {
+        <div class="commerce-main">
+            <div class="commerce-card">
+                @foreach (var item in cart.Items)
+                {
+                    <div class="cart-row">
+                        <div class="cart-row__info">
+                            <a href="@($"/products/{item.Slug}")"><strong>@item.Name</strong></a>
+                            <span>@item.Sku</span>
+                            <span>@FormatPrice(item.UnitPrice)</span>
+                        </div>
+                        <div class="cart-row__controls">
+                            <InputNumber class="cart-row__qty" @bind-Value="quantities[item.ProductId]" />
+                            <button class="button button--ghost" type="button" @onclick="() => UpdateQuantityAsync(item.ProductId)">به‌روزرسانی</button>
+                            <button class="button button--ghost" type="button" @onclick="() => RemoveAsync(item.ProductId)">حذف</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <aside class="commerce-summary">
+            <div class="commerce-card">
+                <h2>خلاصه سفارش</h2>
+                <div class="summary-list">
+                    <div><span>جمع کالا</span><strong>@FormatPrice(cart.Subtotal)</strong></div>
+                    <div><span>تخفیف</span><strong>@FormatPrice(cart.DiscountAmount)</strong></div>
+                    <div><span>ارسال</span><strong>@FormatPrice(cart.ShippingAmount)</strong></div>
+                    <div><span>مالیات</span><strong>@FormatPrice(cart.TaxAmount)</strong></div>
+                    <div class="summary-list__total"><span>مبلغ نهایی</span><strong>@FormatPrice(cart.TotalAmount)</strong></div>
+                </div>
+
+                <form class="coupon-form" @onsubmit="ApplyCouponAsync" @onsubmit:preventDefault>
+                    <label>
+                        کد تخفیف
+                        <input @bind="couponCode" placeholder="مثلا WELCOME150" />
+                    </label>
+                    <div class="coupon-form__actions">
+                        <button class="button button--primary" type="submit">اعمال</button>
+                        @if (!string.IsNullOrWhiteSpace(cart.CouponCode))
+                        {
+                            <button class="button button--ghost" type="button" @onclick="RemoveCouponAsync">حذف کوپن</button>
+                        }
+                    </div>
+                </form>
+
+                <a class="button button--primary commerce-summary__checkout" href="checkout">ادامه برای پرداخت</a>
+            </div>
+        </aside>
+    }
+</section>
+
+@code {
+    private ShoppingCartDto? cart;
+    private readonly Dictionary<Guid, int> quantities = new();
+    private bool isLoading = true;
+    private string? message;
+    private string? couponCode;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "cart");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        message = null;
+
+        try
+        {
+            cart = await StorefrontApi.GetCartAsync();
+            quantities.Clear();
+            foreach (var item in cart.Items)
+            {
+                quantities[item.ProductId] = item.Quantity;
+            }
+
+            couponCode = cart.CouponCode;
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UpdateQuantityAsync(Guid productId)
+    {
+        if (!quantities.TryGetValue(productId, out var quantity))
+        {
+            return;
+        }
+
+        try
+        {
+            cart = await StorefrontApi.UpdateCartItemAsync(productId, new UpdateCartItemRequest(quantity));
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private async Task RemoveAsync(Guid productId)
+    {
+        try
+        {
+            cart = await StorefrontApi.RemoveCartItemAsync(productId);
+            quantities.Remove(productId);
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private async Task ApplyCouponAsync()
+    {
+        if (string.IsNullOrWhiteSpace(couponCode))
+        {
+            return;
+        }
+
+        try
+        {
+            cart = await StorefrontApi.ApplyCouponAsync(new ApplyCouponRequest(couponCode));
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private async Task RemoveCouponAsync()
+    {
+        try
+        {
+            cart = await StorefrontApi.RemoveCouponAsync();
+            couponCode = null;
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+}

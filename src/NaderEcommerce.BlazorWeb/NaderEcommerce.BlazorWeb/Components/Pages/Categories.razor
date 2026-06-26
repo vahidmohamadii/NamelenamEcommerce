@@ -1,0 +1,56 @@
+@page "/categories"
+@inject CatalogApiClient CatalogApi
+
+<PageTitle>دسته‌بندی‌ها | فروشگاه نادر</PageTitle>
+
+<section class="catalog-header">
+    <p class="eyebrow">مسیرهای خرید</p>
+    <h1>دسته‌بندی‌ها</h1>
+    <p>محصولات فروشگاه را از مسیر دسته‌های اصلی دنبال کن.</p>
+</section>
+
+<section class="content-band">
+    @if (isLoading)
+    {
+        <div class="loading-line">در حال دریافت دسته‌بندی‌ها...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="notice">@errorMessage</div>
+    }
+    else
+    {
+        <div class="category-grid">
+            @foreach (var category in categories)
+            {
+                <a class="category-card" href="@($"/products?categorySlug={category.Slug}")">
+                    <span>@category.ProductCount محصول</span>
+                    <strong>@category.Name</strong>
+                    <p>@category.Description</p>
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<CategoryDto> categories = Array.Empty<CategoryDto>();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categories = await CatalogApi.GetCategoriesAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API کاتالوگ در دسترس نیست. پروژه WebApi را هم اجرا کن.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

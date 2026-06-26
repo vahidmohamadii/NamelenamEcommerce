@@ -1,0 +1,226 @@
+@page "/products/{Slug}"
+@rendermode InteractiveServer
+@inject CatalogApiClient CatalogApi
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>@(product?.Name ?? "محصول") | فروشگاه نادر</PageTitle>
+
+@if (isLoading)
+{
+    <section class="content-band">
+        <div class="loading-line">در حال دریافت جزئیات محصول...</div>
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <section class="content-band">
+        <div class="notice">@errorMessage</div>
+    </section>
+}
+else if (product is null)
+{
+    <section class="content-band">
+        <div class="empty-state">این محصول پیدا نشد.</div>
+    </section>
+}
+else
+{
+    <section class="product-detail">
+        <div class="product-gallery">
+            <div class="product-gallery__main">
+                @if (!string.IsNullOrWhiteSpace(SelectedImage))
+                {
+                    <img src="@SelectedImage" alt="@product.Name" />
+                }
+            </div>
+            <div class="product-gallery__thumbs">
+                @foreach (var image in product.Images)
+                {
+                    <button class="@ThumbClass(image.Url)" type="button" @onclick="() => SelectImage(image.Url)">
+                        <img src="@image.Url" alt="@(image.AltText ?? product.Name)" />
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="product-summary">
+            <div class="product-summary__categories">
+                @foreach (var category in product.Categories)
+                {
+                    <a href="@($"/products?categorySlug={category.Slug}")">@category.Name</a>
+                }
+            </div>
+            <h1>@product.Name</h1>
+            <p class="sku">کد کالا: @product.Sku</p>
+            <p>@product.Description</p>
+
+            <div class="detail-price">
+                <strong>@FormatPrice(product.DiscountPrice ?? product.Price)</strong>
+                @if (product.DiscountPrice is not null)
+                {
+                    <span>@FormatPrice(product.Price)</span>
+                }
+            </div>
+
+            <div class="detail-actions">
+                <span class="@(product.Stock > 0 ? "stock stock--available" : "stock stock--empty")">
+                    @(product.Stock > 0 ? $"موجودی {product.Stock}" : "ناموجود")
+                </span>
+                @if (product.Stock > 0)
+                {
+                    <div class="detail-actions__purchase">
+                        <InputNumber class="detail-actions__qty" @bind-Value="quantity" />
+                        <button class="button button--primary" type="button" @onclick="AddToCartAsync">افزودن به سبد</button>
+                        <button class="button button--ghost" type="button" @onclick="AddToWishlistAsync">علاقه‌مندی</button>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(product.QrLinkUrl))
+                {
+                    <a class="button button--ghost" href="@product.QrLinkUrl">لینک QR</a>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(actionMessage))
+            {
+                <div class="notice">@actionMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(product.Specifications))
+            {
+                <div class="spec-box">
+                    <h2>مشخصات</h2>
+                    @foreach (var line in product.Specifications.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <p>@line</p>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+
+    @if (product.RelatedProducts.Count > 0)
+    {
+        <section class="content-band">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">پیشنهاد مرتبط</p>
+                    <h2>محصولات مشابه</h2>
+                </div>
+            </div>
+            <div class="product-grid product-grid--compact">
+                @foreach (var related in product.RelatedProducts)
+                {
+                    <ProductCard Product="related" />
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private ProductDetailsDto? product;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? SelectedImage { get; set; }
+    private string? actionMessage;
+    private int quantity = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        actionMessage = null;
+
+        try
+        {
+            await Session.EnsureInitializedAsync();
+            product = await CatalogApi.GetProductAsync(Slug);
+            SelectedImage = product?.Images.FirstOrDefault()?.Url;
+            quantity = 1;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "API کاتالوگ در دسترس نیست. پروژه WebApi را هم اجرا کن.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectImage(string imageUrl)
+    {
+        SelectedImage = imageUrl;
+    }
+
+    private async Task AddToCartAsync()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await StorefrontApi.AddCartItemAsync(new AddCartItemRequest(product.Id, Math.Max(1, quantity)));
+            actionMessage = "محصول به سبد خرید اضافه شد.";
+        }
+        catch (StorefrontApiException exception)
+        {
+            HandleStorefrontError(exception);
+        }
+    }
+
+    private async Task AddToWishlistAsync()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await StorefrontApi.AddWishlistAsync(product.Id);
+            actionMessage = "محصول به علاقه‌مندی‌ها اضافه شد.";
+        }
+        catch (StorefrontApiException exception)
+        {
+            HandleStorefrontError(exception);
+        }
+    }
+
+    private void HandleStorefrontError(StorefrontApiException exception)
+    {
+        if (exception.StatusCode == 401)
+        {
+            Navigation.NavigateTo(QueryHelpers.AddQueryString(
+                "/signin",
+                "returnUrl",
+                Navigation.ToBaseRelativePath(Navigation.Uri)));
+            return;
+        }
+
+        actionMessage = exception.Message;
+    }
+
+    private string ThumbClass(string imageUrl)
+    {
+        return imageUrl == SelectedImage
+            ? "product-gallery__thumb product-gallery__thumb--active"
+            : "product-gallery__thumb";
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(
+            CultureInfo.GetCultureInfo("fa-IR"),
+            $"{value:N0} تومان");
+    }
+}
