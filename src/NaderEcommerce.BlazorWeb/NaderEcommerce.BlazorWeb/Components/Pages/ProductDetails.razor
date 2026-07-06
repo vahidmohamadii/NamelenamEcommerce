@@ -7,18 +7,22 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.WebUtilities
 
-<PageTitle>@(product?.Name ?? "محصول") | فروشگاه نادر</PageTitle>
+<PageTitle>@SeoDefaults.PageTitle(product?.Name ?? "محصول")</PageTitle>
 <HeadContent>
     <meta name="description" content="@MetaDescription" />
-    <meta property="og:title" content="@($"{product?.Name ?? "محصول"} | فروشگاه نادر")" />
+    <meta property="og:title" content="@SeoDefaults.PageTitle(product?.Name ?? "محصول")" />
     <meta property="og:description" content="@MetaDescription" />
     <meta property="og:type" content="product" />
     <meta property="og:url" content="@CanonicalUrl" />
-    @if (!string.IsNullOrWhiteSpace(SelectedImage))
+    @if (!string.IsNullOrWhiteSpace(SelectedImageAbsoluteUrl))
     {
-        <meta property="og:image" content="@SelectedImage" />
+        <meta property="og:image" content="@SelectedImageAbsoluteUrl" />
     }
     <link rel="canonical" href="@CanonicalUrl" />
+    @if (product is not null)
+    {
+        <script type="application/ld+json">@((MarkupString)ProductStructuredData)</script>
+    }
 </HeadContent>
 
 @if (isLoading)
@@ -144,8 +148,19 @@ else
     private string? actionMessage;
     private int quantity = 1;
     private string CanonicalUrl => Navigation.ToAbsoluteUri($"products/{Slug}").ToString();
+    private string SelectedImageAbsoluteUrl => SeoDefaults.AbsoluteAssetUrl(Navigation, SelectedImage);
+    private string ProductStructuredData => product is null
+        ? string.Empty
+        : SeoDefaults.ProductStructuredData(
+            product.Name,
+            product.Sku,
+            MetaDescription,
+            CanonicalUrl,
+            SelectedImageAbsoluteUrl,
+            product.DiscountPrice ?? product.Price,
+            product.Stock > 0);
     private string MetaDescription => string.IsNullOrWhiteSpace(product?.Description)
-        ? "مشاهده جزئیات محصول، قیمت، موجودی و دسته‌بندی در فروشگاه نادر."
+        ? "مشاهده جزئیات محصول، قیمت، موجودی و دسته‌بندی در فروشگاه نفس."
         : product.Description.Length > 155
             ? $"{product.Description[..155]}..."
             : product.Description;

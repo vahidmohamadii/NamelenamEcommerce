@@ -3,22 +3,24 @@
 @inject CmsApiClient CmsApi
 @inject NavigationManager Navigation
 
-<PageTitle>@(settings?.SeoTitle ?? settings?.SiteName ?? "فروشگاه نادر")</PageTitle>
+<PageTitle>@(settings?.SeoTitle ?? SeoDefaults.HomeTitle)</PageTitle>
 <HeadContent>
     <meta name="description" content="@SeoDescription" />
-    <meta property="og:title" content="@(settings?.SeoTitle ?? settings?.SiteName ?? "فروشگاه نادر")" />
+    <meta name="keywords" content="فروشگاه نفس, لوازم آرایشی نفس, لوازم ارایشی و بهداشتی نفس, nafasshop, nafashshop786" />
+    <meta property="og:title" content="@(settings?.SeoTitle ?? SeoDefaults.HomeTitle)" />
     <meta property="og:description" content="@SeoDescription" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@CanonicalUrl" />
     <link rel="canonical" href="@CanonicalUrl" />
+    <script type="application/ld+json">@((MarkupString)StructuredData)</script>
 </HeadContent>
 
 <section class="hero-section" style="@HeroStyle">
     <div class="hero-section__content">
         <p class="eyebrow">کاتالوگ زیبایی</p>
-        <h1>@(heroSlider?.Title ?? settings?.SiteName ?? "فروشگاه نادر")</h1>
+        <h1>@(heroSlider?.Title ?? settings?.SiteName ?? SeoDefaults.SiteName)</h1>
         <p>
-            @(heroSlider?.Subtitle ?? settings?.SeoDescription ?? "محصولات منتخب زیبایی با دسته‌بندی روشن، موجودی قابل مشاهده و مسیر خرید ساده.")
+            @(heroSlider?.Subtitle ?? settings?.SeoDescription ?? SeoDefaults.HomeDescription)
         </p>
         <div class="hero-section__actions">
             <a class="button button--primary" href="products">مشاهده محصولات</a>
@@ -99,8 +101,10 @@ else if (home is not null)
     private bool isLoading = true;
     private string? errorMessage;
     private string CanonicalUrl => Navigation.BaseUri.TrimEnd('/');
+    private string ProductsUrl => SeoDefaults.AbsoluteUrl(Navigation, "products");
+    private string StructuredData => SeoDefaults.HomeStructuredData(CanonicalUrl, ProductsUrl);
     private string SeoDescription => settings?.SeoDescription
-        ?? "محصولات منتخب زیبایی با دسته‌بندی روشن، موجودی قابل مشاهده و مسیر خرید ساده.";
+        ?? SeoDefaults.HomeDescription;
 
     private string HeroStyle => heroSlider is null
         ? string.Empty

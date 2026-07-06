@@ -300,12 +300,12 @@ public static class DatabaseInitializer
         {
             dbContext.WebsiteSettings.Add(new WebsiteSettings
             {
-                SiteName = "فروشگاه نادر",
-                SupportEmail = "support@naderecommerce.local",
+                SiteName = "فروشگاه نفس",
+                SupportEmail = "support@nafashshop786.com",
                 SupportPhone = "+98 21 0000 0000",
                 Address = "تهران، ایران",
-                SeoTitle = "فروشگاه زیبایی نادر",
-                SeoDescription = "محصولات منتخب مراقبت پوست، آرایش و ابزار زیبایی.",
+                SeoTitle = "فروشگاه نفس | لوازم آرایشی و بهداشتی نفس",
+                SeoDescription = "فروشگاه نفس مرجع خرید لوازم آرایشی نفس و لوازم ارایشی و بهداشتی نفس با محصولات مراقبت پوست، آرایش، عطر و ابزار زیبایی. nafasshop",
                 CreatedAt = now
             });
         }
@@ -314,8 +314,8 @@ public static class DatabaseInitializer
         {
             dbContext.Sliders.Add(new Slider
             {
-                Title = "ضروری‌های زیبایی روزانه",
-                Subtitle = "مراقبت پوست، آرایش و ابزارهای کاربردی برای روتین هر روز.",
+                Title = "فروشگاه نفس",
+                Subtitle = "لوازم آرایشی نفس و محصولات بهداشتی منتخب برای روتین زیبایی و مراقبت روزانه.",
                 ImageUrl = "/images/hero/beauty-essentials.svg",
                 LinkUrl = "/products",
                 DisplayOrder = 1,
@@ -333,11 +333,11 @@ public static class DatabaseInitializer
             dbContext.Pages.Add(new Page
             {
                 Key = "about-us",
-                Title = "درباره فروشگاه نادر",
+                Title = "درباره فروشگاه نفس",
                 Slug = "about-us",
-                Content = "فروشگاه نادر یک فروشگاه آنلاین متمرکز برای مراقبت پوست، آرایش، عطر و ابزار زیبایی است.\n\nاین صفحه از پنل مدیریت محتوا قابل ویرایش است و بدون تغییر کد به‌روزرسانی می‌شود.",
-                MetaTitle = "درباره فروشگاه نادر",
-                MetaDescription = "با فروشگاه نادر بیشتر آشنا شوید.",
+                Content = "فروشگاه نفس یک فروشگاه آنلاین متمرکز برای لوازم آرایشی و بهداشتی، مراقبت پوست، عطر و ابزار زیبایی است.\n\nدر فروشگاه نفس تلاش می‌کنیم خرید لوازم آرایشی نفس و محصولات بهداشتی کاربردی، ساده، شفاف و قابل اعتماد باشد.",
+                MetaTitle = "درباره فروشگاه نفس",
+                MetaDescription = "با فروشگاه نفس، فروشگاه لوازم آرایشی و بهداشتی نفس، بیشتر آشنا شوید.",
                 IsPublished = true,
                 CreatedAt = now
             });
@@ -350,9 +350,9 @@ public static class DatabaseInitializer
                 Key = "contact-us",
                 Title = "تماس با ما",
                 Slug = "contact-us",
-                Content = "برای پیگیری سفارش یا انتخاب محصول نیاز به راهنمایی داری؟ با تیم پشتیبانی فروشگاه نادر تماس بگیر.\n\nایمیل: support@naderecommerce.local\nتلفن: +98 21 0000 0000",
-                MetaTitle = "تماس با فروشگاه نادر",
-                MetaDescription = "راه‌های ارتباط با پشتیبانی فروشگاه نادر.",
+                Content = "برای پیگیری سفارش یا انتخاب محصول نیاز به راهنمایی داری؟ با تیم پشتیبانی فروشگاه نفس تماس بگیر.\n\nایمیل: support@nafashshop786.com\nتلفن: +98 21 0000 0000",
+                MetaTitle = "تماس با فروشگاه نفس",
+                MetaDescription = "راه‌های ارتباط با پشتیبانی فروشگاه نفس.",
                 IsPublished = true,
                 CreatedAt = now
             });

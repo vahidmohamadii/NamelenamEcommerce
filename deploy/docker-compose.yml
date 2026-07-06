@@ -1,0 +1,62 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: nader-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD}"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    ports:
+      - "127.0.0.1:1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/1433'"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: ..
+      dockerfile: src/NaderEcommerce.WebApi/Dockerfile
+    container_name: nader-api
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=${DB_NAME};User Id=sa;Password=${SQL_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True"
+      Database__ApplyMigrationsOnStartup: "${APPLY_MIGRATIONS_ON_STARTUP:-true}"
+      Jwt__Issuer: "${JWT_ISSUER}"
+      Jwt__Audience: "${JWT_AUDIENCE}"
+      Jwt__Secret: "${JWT_SECRET}"
+      SeedData__Admin__Email: "${ADMIN_EMAIL}"
+      SeedData__Admin__Password: "${ADMIN_PASSWORD}"
+      SeedData__Admin__FullName: "${ADMIN_FULL_NAME}"
+      AllowedHosts: "${DOMAIN};${ROOT_DOMAIN};api;localhost"
+    ports:
+      - "127.0.0.1:5111:8080"
+
+  web:
+    build:
+      context: ..
+      dockerfile: src/NaderEcommerce.BlazorWeb/NaderEcommerce.BlazorWeb/Dockerfile
+    container_name: nader-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:8080"
+      Api__BaseUrl: "http://api:8080/"
+      Site__BaseUrl: "${SITE_BASE_URL}"
+      AllowedHosts: "${DOMAIN};${ROOT_DOMAIN};localhost"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  sqlserver-data:

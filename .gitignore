@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+deploy/.env
 
 # Local application settings
 src/NaderEcommerce.WebApi/appsettings.Development.json

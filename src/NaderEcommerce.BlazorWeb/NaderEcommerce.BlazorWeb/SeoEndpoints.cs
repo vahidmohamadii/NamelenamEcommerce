@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security;
 using System.Text;
 using NaderEcommerce.Application.Catalog;
@@ -16,13 +17,6 @@ public static class SeoEndpoints
             var content = string.Join('\n',
                 "User-agent: *",
                 "Allow: /",
-                "Disallow: /admin",
-                "Disallow: /signin",
-                "Disallow: /register",
-                "Disallow: /cart",
-                "Disallow: /checkout",
-                "Disallow: /orders",
-                "Disallow: /wishlist",
                 $"Sitemap: {baseUrl}/sitemap.xml",
                 string.Empty);
 
@@ -34,19 +28,22 @@ public static class SeoEndpoints
             async (HttpContext context, CatalogApiClient catalogApi, CmsApiClient cmsApi, CancellationToken cancellationToken) =>
             {
                 var baseUrl = GetBaseUrl(context);
-                var urls = new SortedSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    $"{baseUrl}/",
-                    $"{baseUrl}/products",
-                    $"{baseUrl}/categories"
-                };
+                var urls = new SortedDictionary<string, SitemapUrl>(StringComparer.OrdinalIgnoreCase);
+
+                AddSitemapUrl(urls, $"{baseUrl}/", "daily", 1.0m);
+                AddSitemapUrl(urls, $"{baseUrl}/products", "daily", 0.9m);
+                AddSitemapUrl(urls, $"{baseUrl}/categories", "weekly", 0.8m);
 
                 try
                 {
                     var categories = await catalogApi.GetCategoriesAsync(cancellationToken);
                     foreach (var category in Flatten(categories))
                     {
-                        urls.Add($"{baseUrl}/products?categorySlug={Uri.EscapeDataString(category.Slug)}");
+                        AddSitemapUrl(
+                            urls,
+                            $"{baseUrl}/products?categorySlug={Uri.EscapeDataString(category.Slug)}",
+                            "weekly",
+                            0.7m);
                     }
 
                     var pageNumber = 1;
@@ -66,7 +63,11 @@ public static class SeoEndpoints
 
                         foreach (var product in page.Items)
                         {
-                            urls.Add($"{baseUrl}/products/{Uri.EscapeDataString(product.Slug)}");
+                            AddSitemapUrl(
+                                urls,
+                                $"{baseUrl}/products/{Uri.EscapeDataString(product.Slug)}",
+                                "weekly",
+                                0.7m);
                         }
 
                         pageNumber++;
@@ -81,7 +82,7 @@ public static class SeoEndpoints
                     // Keep the sitemap available even if the API is temporarily unavailable.
                 }
 
-                var xml = BuildSitemap(urls);
+                var xml = BuildSitemap(urls.Values);
                 return Results.Text(xml, "application/xml; charset=utf-8");
             });
 
@@ -89,7 +90,7 @@ public static class SeoEndpoints
     }
 
     private static async Task AddCmsPageAsync(
-        ISet<string> urls,
+        IDictionary<string, SitemapUrl> urls,
         string baseUrl,
         CmsApiClient cmsApi,
         string key,
@@ -98,8 +99,17 @@ public static class SeoEndpoints
         var page = await cmsApi.GetPageByKeyAsync(key, cancellationToken);
         if (page is not null)
         {
-            urls.Add($"{baseUrl}/{Uri.EscapeDataString(page.Slug)}");
+            AddSitemapUrl(urls, $"{baseUrl}/{Uri.EscapeDataString(page.Slug)}", "monthly", 0.5m);
         }
+    }
+
+    private static void AddSitemapUrl(
+        IDictionary<string, SitemapUrl> urls,
+        string url,
+        string changeFrequency,
+        decimal priority)
+    {
+        urls[url] = new SitemapUrl(url, DateTimeOffset.UtcNow, changeFrequency, priority);
     }
 
     private static IEnumerable<CategoryDto> Flatten(IEnumerable<CategoryDto> categories)
@@ -115,7 +125,7 @@ public static class SeoEndpoints
         }
     }
 
-    private static string BuildSitemap(IEnumerable<string> urls)
+    private static string BuildSitemap(IEnumerable<SitemapUrl> urls)
     {
         var builder = new StringBuilder();
         builder.AppendLine("""<?xml version="1.0" encoding="UTF-8"?>""");
@@ -125,8 +135,17 @@ public static class SeoEndpoints
         {
             builder.AppendLine("  <url>");
             builder.Append("    <loc>")
-                .Append(SecurityElement.Escape(url))
+                .Append(SecurityElement.Escape(url.Location))
                 .AppendLine("</loc>");
+            builder.Append("    <lastmod>")
+                .Append(url.LastModified.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+                .AppendLine("</lastmod>");
+            builder.Append("    <changefreq>")
+                .Append(url.ChangeFrequency)
+                .AppendLine("</changefreq>");
+            builder.Append("    <priority>")
+                .Append(url.Priority.ToString("0.0", CultureInfo.InvariantCulture))
+                .AppendLine("</priority>");
             builder.AppendLine("  </url>");
         }
 
@@ -143,4 +162,10 @@ public static class SeoEndpoints
             ? $"{context.Request.Scheme}://{context.Request.Host}".TrimEnd('/')
             : configured.TrimEnd('/');
     }
+
+    private sealed record SitemapUrl(
+        string Location,
+        DateTimeOffset LastModified,
+        string ChangeFrequency,
+        decimal Priority);
 }

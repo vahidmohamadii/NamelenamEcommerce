@@ -3,7 +3,8 @@
 @inject AdminApiClient AdminApi
 @inject StorefrontSessionService Session
 
-<PageTitle>مدیریت محتوا | فروشگاه نادر</PageTitle>
+<PageTitle>مدیریت محتوا | فروشگاه نفس</PageTitle>
+<NoIndexHead />
 
 <section class="admin-shell">
     <header class="admin-header">
@@ -287,7 +288,7 @@
 
     private sealed class SettingsForm
     {
-        public string SiteName { get; set; } = "فروشگاه نادر";
+        public string SiteName { get; set; } = "فروشگاه نفس";
         public string? LogoUrl { get; set; }
         public string? SupportEmail { get; set; }
         public string? SupportPhone { get; set; }

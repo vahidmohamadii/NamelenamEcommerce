@@ -5,10 +5,10 @@
 @inject CmsApiClient CmsApi
 @inject NavigationManager Navigation
 
-<PageTitle>@(page?.MetaTitle ?? page?.Title ?? "صفحه") | فروشگاه نادر</PageTitle>
+<PageTitle>@SeoDefaults.PageTitle(page?.MetaTitle ?? page?.Title ?? "صفحه")</PageTitle>
 <HeadContent>
     <meta name="description" content="@MetaDescription" />
-    <meta property="og:title" content="@($"{page?.MetaTitle ?? page?.Title ?? "صفحه"} | فروشگاه نادر")" />
+    <meta property="og:title" content="@SeoDefaults.PageTitle(page?.MetaTitle ?? page?.Title ?? "صفحه")" />
     <meta property="og:description" content="@MetaDescription" />
     <meta property="og:type" content="article" />
     <meta property="og:url" content="@CanonicalUrl" />
@@ -16,7 +16,7 @@
 </HeadContent>
 
 <section class="catalog-header">
-    <p class="eyebrow">فروشگاه نادر</p>
+    <p class="eyebrow">فروشگاه نفس</p>
     <h1>@(page?.Title ?? "صفحه")</h1>
 </section>
 
@@ -51,7 +51,7 @@
         ? Navigation.Uri
         : Navigation.ToAbsoluteUri(page.Slug).ToString();
     private string MetaDescription => page?.MetaDescription
-        ?? "صفحه اطلاعاتی فروشگاه نادر.";
+        ?? "صفحه اطلاعاتی فروشگاه نفس، فروشگاه لوازم آرایشی و بهداشتی نفس.";
 
     protected override async Task OnParametersSetAsync()
     {
