@@ -1,7 +1,16 @@
 @page "/categories"
 @inject CatalogApiClient CatalogApi
+@inject NavigationManager Navigation
 
 <PageTitle>دسته‌بندی‌ها | فروشگاه نادر</PageTitle>
+<HeadContent>
+    <meta name="description" content="دسته‌بندی‌های اصلی فروشگاه نادر برای پیدا کردن سریع محصولات زیبایی، مراقبت پوست و ابزار آرایشی." />
+    <meta property="og:title" content="دسته‌بندی‌های فروشگاه نادر" />
+    <meta property="og:description" content="محصولات فروشگاه را از مسیر دسته‌بندی‌های اصلی دنبال کن." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
 
 <section class="catalog-header">
     <p class="eyebrow">مسیرهای خرید</p>
@@ -37,6 +46,7 @@
     private IReadOnlyList<CategoryDto> categories = Array.Empty<CategoryDto>();
     private bool isLoading = true;
     private string? errorMessage;
+    private string CanonicalUrl => Navigation.ToAbsoluteUri("categories").ToString();
 
     protected override async Task OnInitializedAsync()
     {

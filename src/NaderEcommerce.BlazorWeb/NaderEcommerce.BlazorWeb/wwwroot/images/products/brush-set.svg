@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1035" role="img" aria-label="Seven piece brush set">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff0ea"/>
+      <stop offset="1" stop-color="#e3b199"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1035" fill="url(#bg)"/>
+  <circle cx="710" cy="255" r="160" fill="#fff7f3" opacity=".6"/>
+  <g transform="translate(185 215) rotate(-10 265 310)">
+    <rect x="105" y="250" width="46" height="430" rx="23" fill="#3d302c"/>
+    <rect x="232" y="195" width="54" height="485" rx="27" fill="#3d302c"/>
+    <rect x="370" y="245" width="46" height="435" rx="23" fill="#3d302c"/>
+    <path d="M82 190c20-78 74-96 96 0v82H82z" fill="#b88770"/>
+    <path d="M202 120c28-96 98-118 114 0v100H202z" fill="#c5957e"/>
+    <path d="M348 188c22-74 74-92 90 0v84h-90z" fill="#a87966"/>
+    <rect x="82" y="250" width="96" height="45" rx="12" fill="#c9a060"/>
+    <rect x="202" y="205" width="114" height="48" rx="12" fill="#c9a060"/>
+    <rect x="348" y="250" width="90" height="45" rx="12" fill="#c9a060"/>
+  </g>
+  <text x="450" y="850" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#3d302c">BRUSH SET</text>
+  <text x="450" y="910" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#3d302c">Nader</text>
+</svg>

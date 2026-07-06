@@ -6,6 +6,14 @@
 @inject NavigationManager Navigation
 
 <PageTitle>@(page?.MetaTitle ?? page?.Title ?? "صفحه") | فروشگاه نادر</PageTitle>
+<HeadContent>
+    <meta name="description" content="@MetaDescription" />
+    <meta property="og:title" content="@($"{page?.MetaTitle ?? page?.Title ?? "صفحه"} | فروشگاه نادر")" />
+    <meta property="og:description" content="@MetaDescription" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
 
 <section class="catalog-header">
     <p class="eyebrow">فروشگاه نادر</p>
@@ -39,6 +47,11 @@
     private CmsPageDto? page;
     private bool isLoading = true;
     private string? errorMessage;
+    private string CanonicalUrl => page is null
+        ? Navigation.Uri
+        : Navigation.ToAbsoluteUri(page.Slug).ToString();
+    private string MetaDescription => page?.MetaDescription
+        ?? "صفحه اطلاعاتی فروشگاه نادر.";
 
     protected override async Task OnParametersSetAsync()
     {

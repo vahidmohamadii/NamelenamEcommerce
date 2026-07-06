@@ -4,7 +4,7 @@
     <a class="product-card__media" href="@ProductUrl">
         @if (!string.IsNullOrWhiteSpace(Product.PrimaryImageUrl))
         {
-            <img src="@Product.PrimaryImageUrl" alt="@Product.Name" loading="lazy" />
+            <img src="@Product.PrimaryImageUrl" alt="@Product.Name" loading="lazy" decoding="async" />
         }
         else
         {

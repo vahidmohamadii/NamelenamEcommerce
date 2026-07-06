@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1035" role="img" aria-label="White flower body splash">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fbef"/>
+      <stop offset="1" stop-color="#cbdca7"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1035" fill="url(#bg)"/>
+  <circle cx="230" cy="240" r="160" fill="#fff" opacity=".55"/>
+  <circle cx="700" cy="790" r="210" fill="#9db96f" opacity=".3"/>
+  <rect x="365" y="150" width="170" height="110" rx="28" fill="#5d6f43"/>
+  <rect x="320" y="245" width="260" height="580" rx="84" fill="#fafff0"/>
+  <rect x="360" y="340" width="180" height="330" rx="52" fill="#dbe8bd"/>
+  <circle cx="450" cy="485" r="62" fill="#fff"/>
+  <circle cx="410" cy="485" r="32" fill="#fff"/>
+  <circle cx="490" cy="485" r="32" fill="#fff"/>
+  <text x="450" y="745" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#5d6f43">WHITE FLOWER</text>
+  <text x="450" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#465532">Nader</text>
+</svg>

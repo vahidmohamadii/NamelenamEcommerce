@@ -8,6 +8,18 @@
 @using Microsoft.AspNetCore.WebUtilities
 
 <PageTitle>@(product?.Name ?? "محصول") | فروشگاه نادر</PageTitle>
+<HeadContent>
+    <meta name="description" content="@MetaDescription" />
+    <meta property="og:title" content="@($"{product?.Name ?? "محصول"} | فروشگاه نادر")" />
+    <meta property="og:description" content="@MetaDescription" />
+    <meta property="og:type" content="product" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    @if (!string.IsNullOrWhiteSpace(SelectedImage))
+    {
+        <meta property="og:image" content="@SelectedImage" />
+    }
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
 
 @if (isLoading)
 {
@@ -34,14 +46,14 @@ else
             <div class="product-gallery__main">
                 @if (!string.IsNullOrWhiteSpace(SelectedImage))
                 {
-                    <img src="@SelectedImage" alt="@product.Name" />
+                    <img src="@SelectedImage" alt="@product.Name" loading="eager" decoding="async" fetchpriority="high" />
                 }
             </div>
             <div class="product-gallery__thumbs">
                 @foreach (var image in product.Images)
                 {
                     <button class="@ThumbClass(image.Url)" type="button" @onclick="() => SelectImage(image.Url)">
-                        <img src="@image.Url" alt="@(image.AltText ?? product.Name)" />
+                        <img src="@image.Url" alt="@(image.AltText ?? product.Name)" loading="lazy" decoding="async" />
                     </button>
                 }
             </div>
@@ -131,6 +143,12 @@ else
     private string? SelectedImage { get; set; }
     private string? actionMessage;
     private int quantity = 1;
+    private string CanonicalUrl => Navigation.ToAbsoluteUri($"products/{Slug}").ToString();
+    private string MetaDescription => string.IsNullOrWhiteSpace(product?.Description)
+        ? "مشاهده جزئیات محصول، قیمت، موجودی و دسته‌بندی در فروشگاه نادر."
+        : product.Description.Length > 155
+            ? $"{product.Description[..155]}..."
+            : product.Description;
 
     protected override async Task OnParametersSetAsync()
     {

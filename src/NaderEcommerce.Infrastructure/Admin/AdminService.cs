@@ -12,6 +12,8 @@ namespace NaderEcommerce.Infrastructure.Admin;
 
 public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
 {
+    private const int MaxAdminListItems = 200;
+
     public async Task<AdminDashboardDto> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
         var recentOrders = await dbContext.Orders
@@ -107,6 +109,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         var products = await ProductQuery()
             .AsNoTracking()
             .OrderByDescending(product => product.CreatedAt)
+            .Take(MaxAdminListItems)
             .ToListAsync(cancellationToken);
 
         return products.Select(MapProduct).ToArray();
@@ -151,14 +154,9 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         await EnsureProductKeysAreUniqueAsync(request.Slug, request.Sku, productId, cancellationToken);
         await EnsureProductRelationsExistAsync(request, cancellationToken);
 
-        dbContext.ProductImages.RemoveRange(product.Images);
-        dbContext.ProductCategories.RemoveRange(product.ProductCategories);
-        product.Images.Clear();
-        product.ProductCategories.Clear();
-
         ApplyProduct(product, request);
-        ApplyProductImages(product, request.Images);
-        ApplyProductCategories(product, request.CategoryIds);
+        SyncProductImages(product, request.Images);
+        SyncProductCategories(product, request.CategoryIds);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -181,6 +179,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             .AsNoTracking()
             .Include(order => order.Items)
             .OrderByDescending(order => order.CreatedAt)
+            .Take(MaxAdminListItems)
             .ToListAsync(cancellationToken);
 
         return orders.Select(MapOrderSummary).ToArray();
@@ -220,6 +219,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         var coupons = await dbContext.Coupons
             .AsNoTracking()
             .OrderByDescending(coupon => coupon.CreatedAt)
+            .Take(MaxAdminListItems)
             .ToListAsync(cancellationToken);
 
         return coupons.Select(MapCoupon).ToArray();
@@ -282,6 +282,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             .Include(review => review.Product)
             .Include(review => review.User)
             .OrderByDescending(review => review.CreatedAt)
+            .Take(MaxAdminListItems)
             .ToListAsync(cancellationToken);
 
         return reviews.Select(MapReview).ToArray();
@@ -693,9 +694,86 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         }
     }
 
+    private void SyncProductImages(Product product, IReadOnlyList<UpsertProductImageRequest> images)
+    {
+        var normalizedImages = images
+            .Where(image => !string.IsNullOrWhiteSpace(image.Url))
+            .OrderBy(image => image.DisplayOrder)
+            .Take(10)
+            .ToArray();
+        var existingImages = product.Images
+            .OrderBy(image => image.DisplayOrder)
+            .ToArray();
+
+        var primaryWasSet = false;
+        for (var index = 0; index < normalizedImages.Length; index++)
+        {
+            var request = normalizedImages[index];
+            var isPrimary = request.IsPrimary && !primaryWasSet;
+            primaryWasSet |= isPrimary;
+
+            if (index < existingImages.Length)
+            {
+                var existing = existingImages[index];
+                existing.Url = request.Url.Trim();
+                existing.AltText = NormalizeOptional(request.AltText);
+                existing.DisplayOrder = request.DisplayOrder;
+                existing.IsPrimary = isPrimary;
+            }
+            else
+            {
+                product.Images.Add(new ProductImage
+                {
+                    ProductId = product.Id,
+                    Url = request.Url.Trim(),
+                    AltText = NormalizeOptional(request.AltText),
+                    DisplayOrder = request.DisplayOrder,
+                    IsPrimary = isPrimary
+                });
+            }
+        }
+
+        foreach (var removedImage in existingImages.Skip(normalizedImages.Length))
+        {
+            dbContext.ProductImages.Remove(removedImage);
+            product.Images.Remove(removedImage);
+        }
+
+        if (!primaryWasSet && product.Images.Count > 0)
+        {
+            product.Images.OrderBy(image => image.DisplayOrder).First().IsPrimary = true;
+        }
+    }
+
     private static void ApplyProductCategories(Product product, IReadOnlyList<Guid> categoryIds)
     {
         foreach (var categoryId in categoryIds.Distinct())
+        {
+            product.ProductCategories.Add(new ProductCategory
+            {
+                ProductId = product.Id,
+                CategoryId = categoryId
+            });
+        }
+    }
+
+    private static void SyncProductCategories(Product product, IReadOnlyList<Guid> categoryIds)
+    {
+        var requestedCategoryIds = categoryIds.Distinct().ToHashSet();
+        var removedCategories = product.ProductCategories
+            .Where(productCategory => !requestedCategoryIds.Contains(productCategory.CategoryId))
+            .ToArray();
+
+        foreach (var productCategory in removedCategories)
+        {
+            product.ProductCategories.Remove(productCategory);
+        }
+
+        var existingCategoryIds = product.ProductCategories
+            .Select(productCategory => productCategory.CategoryId)
+            .ToHashSet();
+
+        foreach (var categoryId in requestedCategoryIds.Except(existingCategoryIds))
         {
             product.ProductCategories.Add(new ProductCategory
             {

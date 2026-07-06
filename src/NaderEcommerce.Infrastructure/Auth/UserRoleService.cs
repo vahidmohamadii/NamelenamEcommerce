@@ -7,6 +7,8 @@ namespace NaderEcommerce.Infrastructure.Auth;
 
 public sealed class UserRoleService(ApplicationDbContext dbContext) : IUserRoleService
 {
+    private const int MaxAdminListItems = 200;
+
     public async Task<IReadOnlyList<AdminUserDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         return await dbContext.Users
@@ -14,6 +16,7 @@ public sealed class UserRoleService(ApplicationDbContext dbContext) : IUserRoleS
             .Include(user => user.UserRoles)
             .ThenInclude(userRole => userRole.Role)
             .OrderBy(user => user.Email)
+            .Take(MaxAdminListItems)
             .Select(user => new AdminUserDto(
                 user.Id,
                 user.Email,

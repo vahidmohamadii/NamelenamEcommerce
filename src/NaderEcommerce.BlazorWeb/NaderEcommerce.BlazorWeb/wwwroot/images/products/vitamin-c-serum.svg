@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1035" role="img" aria-label="Vitamin C serum bottle">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff1d9"/>
+      <stop offset="1" stop-color="#f3c27c"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1035" fill="url(#bg)"/>
+  <circle cx="690" cy="235" r="150" fill="#fff7eb" opacity=".75"/>
+  <circle cx="180" cy="810" r="210" fill="#da8f3f" opacity=".35"/>
+  <rect x="365" y="175" width="170" height="110" rx="28" fill="#3a2b25"/>
+  <rect x="315" y="265" width="270" height="560" rx="72" fill="#fffaf0"/>
+  <rect x="355" y="320" width="190" height="360" rx="44" fill="#ffcc75"/>
+  <rect x="375" y="390" width="150" height="210" rx="22" fill="#fff5e2"/>
+  <text x="450" y="470" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#8b4a19">C</text>
+  <text x="450" y="525" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#8b4a19">SERUM</text>
+  <text x="450" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#3a2b25">Nader</text>
+</svg>

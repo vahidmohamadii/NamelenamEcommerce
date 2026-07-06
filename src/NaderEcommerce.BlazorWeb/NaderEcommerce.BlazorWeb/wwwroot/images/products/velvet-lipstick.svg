@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1035" role="img" aria-label="Velvet lipstick">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe7e4"/>
+      <stop offset="1" stop-color="#d98a86"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1035" fill="url(#bg)"/>
+  <circle cx="690" cy="250" r="170" fill="#fff3f1" opacity=".55"/>
+  <rect x="380" y="295" width="140" height="440" rx="32" fill="#171214"/>
+  <rect x="390" y="210" width="120" height="130" rx="44" fill="#a83d46"/>
+  <path d="M390 255c30-65 74-100 120-108v124z" fill="#bf5058"/>
+  <rect x="365" y="690" width="170" height="95" rx="22" fill="#c49b65"/>
+  <text x="450" y="830" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#45181e">VELVET 08</text>
+  <text x="450" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#45181e">Nader</text>
+</svg>

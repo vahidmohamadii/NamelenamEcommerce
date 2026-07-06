@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1035" role="img" aria-label="Daily hydra cream jar">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#eff8fb"/>
+      <stop offset="1" stop-color="#b8dce8"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1035" fill="url(#bg)"/>
+  <circle cx="710" cy="245" r="170" fill="#fff" opacity=".55"/>
+  <circle cx="215" cy="760" r="210" fill="#7fb8c8" opacity=".35"/>
+  <ellipse cx="450" cy="660" rx="250" ry="92" fill="#7aaebf" opacity=".35"/>
+  <rect x="265" y="410" width="370" height="280" rx="82" fill="#fffdf7"/>
+  <ellipse cx="450" cy="410" rx="185" ry="58" fill="#e6f5f8"/>
+  <rect x="315" y="335" width="270" height="95" rx="42" fill="#f5fbfd"/>
+  <text x="450" y="535" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#386878">HYDRA</text>
+  <text x="450" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#386878">CREAM</text>
+  <text x="450" y="900" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#27414a">Nader</text>
+</svg>

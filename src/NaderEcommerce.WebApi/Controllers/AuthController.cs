@@ -1,7 +1,8 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NaderEcommerce.Application.Auth;
 
 namespace NaderEcommerce.WebApi.Controllers;
@@ -16,6 +17,7 @@ public sealed class AuthController(
     IValidator<ChangePasswordRequest> changePasswordValidator)
     : ControllerBase
 {
+    [EnableRateLimiting("Auth")]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(
         RegisterRequest request,
@@ -96,6 +98,7 @@ public sealed class AuthController(
         }
     }
 
+    [EnableRateLimiting("Auth")]
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(
         LoginRequest request,
@@ -117,6 +120,7 @@ public sealed class AuthController(
         }
     }
 
+    [EnableRateLimiting("Auth")]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthResponse>> RefreshToken(
         RefreshTokenRequest request,

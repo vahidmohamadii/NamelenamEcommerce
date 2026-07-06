@@ -5,6 +5,14 @@
 @using System.Globalization
 
 <PageTitle>محصولات | فروشگاه نادر</PageTitle>
+<HeadContent>
+    <meta name="description" content="کاتالوگ محصولات فروشگاه نادر با امکان جست‌وجو، فیلتر دسته‌بندی، مرتب‌سازی قیمت و مشاهده موجودی." />
+    <meta property="og:title" content="محصولات فروشگاه نادر" />
+    <meta property="og:description" content="جست‌وجو و مشاهده محصولات فعال فروشگاه نادر." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
 
 <section class="catalog-header">
     <p class="eyebrow">کاتالوگ فروشگاه</p>
@@ -131,6 +139,7 @@
     private decimal? draftMaxPrice;
     private bool draftInStockOnly;
     private string? draftSort;
+    private string CanonicalUrl => Navigation.ToAbsoluteUri("products").ToString();
 
     protected override async Task OnParametersSetAsync()
     {

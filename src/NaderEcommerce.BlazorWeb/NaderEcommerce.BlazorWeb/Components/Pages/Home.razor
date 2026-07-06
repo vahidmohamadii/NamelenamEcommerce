@@ -1,8 +1,17 @@
 @page "/"
 @inject CatalogApiClient CatalogApi
 @inject CmsApiClient CmsApi
+@inject NavigationManager Navigation
 
 <PageTitle>@(settings?.SeoTitle ?? settings?.SiteName ?? "فروشگاه نادر")</PageTitle>
+<HeadContent>
+    <meta name="description" content="@SeoDescription" />
+    <meta property="og:title" content="@(settings?.SeoTitle ?? settings?.SiteName ?? "فروشگاه نادر")" />
+    <meta property="og:description" content="@SeoDescription" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
 
 <section class="hero-section" style="@HeroStyle">
     <div class="hero-section__content">
@@ -89,6 +98,9 @@ else if (home is not null)
     private CmsSliderDto? heroSlider;
     private bool isLoading = true;
     private string? errorMessage;
+    private string CanonicalUrl => Navigation.BaseUri.TrimEnd('/');
+    private string SeoDescription => settings?.SeoDescription
+        ?? "محصولات منتخب زیبایی با دسته‌بندی روشن، موجودی قابل مشاهده و مسیر خرید ساده.";
 
     private string HeroStyle => heroSlider is null
         ? string.Empty

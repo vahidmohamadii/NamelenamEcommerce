@@ -80,6 +80,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(user => user.PasswordHash).IsRequired();
             entity.Property(user => user.FailedLoginAttempts).HasDefaultValue(0);
             entity.HasIndex(user => user.NormalizedEmail).IsUnique();
+            entity.HasIndex(user => user.IsActive);
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -127,6 +128,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(token => token.CreatedByIp).HasMaxLength(64);
             entity.Property(token => token.ReplacedByTokenHash).HasMaxLength(128);
             entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.HasIndex(token => new { token.UserId, token.ExpiresAt });
         });
     }
 
@@ -143,6 +145,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(product => product.DiscountPrice).HasPrecision(18, 2);
             entity.HasIndex(product => product.Slug).IsUnique();
             entity.HasIndex(product => product.Sku).IsUnique();
+            entity.HasIndex(product => new { product.IsActive, product.IsFeatured, product.CreatedAt });
+            entity.HasIndex(product => new { product.IsActive, product.IsBestSeller, product.CreatedAt });
+            entity.HasIndex(product => new { product.IsActive, product.CreatedAt });
         });
 
         modelBuilder.Entity<ProductImage>(entity =>
@@ -151,6 +156,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(image => image.Id);
             entity.Property(image => image.Url).HasMaxLength(2048).IsRequired();
             entity.Property(image => image.AltText).HasMaxLength(220);
+            entity.HasIndex(image => new { image.ProductId, image.IsPrimary, image.DisplayOrder });
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -160,6 +166,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(category => category.Name).HasMaxLength(160).IsRequired();
             entity.Property(category => category.Slug).HasMaxLength(220).IsRequired();
             entity.HasIndex(category => category.Slug).IsUnique();
+            entity.HasIndex(category => new { category.IsActive, category.SortOrder });
             entity.HasOne(category => category.ParentCategory)
                 .WithMany(category => category.Children)
                 .HasForeignKey(category => category.ParentCategoryId)
@@ -170,6 +177,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.ToTable("ProductCategories");
             entity.HasKey(productCategory => new { productCategory.ProductId, productCategory.CategoryId });
+            entity.HasIndex(productCategory => productCategory.CategoryId);
         });
 
         modelBuilder.Entity<Review>(entity =>
@@ -177,6 +185,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.ToTable("Reviews");
             entity.HasKey(review => review.Id);
             entity.Property(review => review.Comment).HasMaxLength(2000);
+            entity.HasIndex(review => new { review.IsApproved, review.CreatedAt });
         });
 
         modelBuilder.Entity<WishlistItem>(entity =>
@@ -192,6 +201,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(link => link.Id);
             entity.Property(link => link.TargetUrl).HasMaxLength(2048).IsRequired();
             entity.Property(link => link.Label).HasMaxLength(160);
+            entity.HasIndex(link => link.IsActive);
         });
     }
 
@@ -214,6 +224,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(order => order.TaxAmount).HasPrecision(18, 2);
             entity.Property(order => order.TotalAmount).HasPrecision(18, 2);
             entity.HasIndex(order => order.OrderNumber).IsUnique();
+            entity.HasIndex(order => new { order.UserId, order.CreatedAt });
+            entity.HasIndex(order => new { order.Status, order.CreatedAt });
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -235,6 +247,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(payment => payment.VerificationToken).HasMaxLength(160);
             entity.Property(payment => payment.Amount).HasPrecision(18, 2);
             entity.Property(payment => payment.FailureReason).HasMaxLength(1000);
+            entity.HasIndex(payment => new { payment.Status, payment.VerifiedAt });
         });
 
         modelBuilder.Entity<ShoppingCart>(entity =>
@@ -259,6 +272,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(coupon => coupon.DiscountAmount).HasPrecision(18, 2);
             entity.Property(coupon => coupon.MinimumOrderAmount).HasPrecision(18, 2);
             entity.HasIndex(coupon => coupon.Code).IsUnique();
+            entity.HasIndex(coupon => new { coupon.IsActive, coupon.StartsAt, coupon.EndsAt });
         });
     }
 
@@ -274,6 +288,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(settings => settings.SupportPhone).HasMaxLength(32);
             entity.Property(settings => settings.SeoTitle).HasMaxLength(220);
             entity.Property(settings => settings.SeoDescription).HasMaxLength(500);
+            entity.HasIndex(settings => settings.CreatedAt);
         });
 
         modelBuilder.Entity<Slider>(entity =>
@@ -284,6 +299,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(slider => slider.Subtitle).HasMaxLength(500);
             entity.Property(slider => slider.ImageUrl).HasMaxLength(2048).IsRequired();
             entity.Property(slider => slider.LinkUrl).HasMaxLength(2048);
+            entity.HasIndex(slider => new { slider.IsActive, slider.DisplayOrder });
         });
 
         modelBuilder.Entity<Page>(entity =>
@@ -297,6 +313,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(page => page.MetaDescription).HasMaxLength(500);
             entity.HasIndex(page => page.Key).IsUnique();
             entity.HasIndex(page => page.Slug).IsUnique();
+            entity.HasIndex(page => new { page.IsPublished, page.Slug });
+            entity.HasIndex(page => new { page.IsPublished, page.Key });
         });
     }
 

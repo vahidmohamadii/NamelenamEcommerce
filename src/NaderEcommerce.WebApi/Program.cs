@@ -1,11 +1,16 @@
-﻿using System.Text;
+using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NaderEcommerce.Application;
-using NaderEcommerce.Infrastructure.Auth;
 using NaderEcommerce.Infrastructure;
+using NaderEcommerce.Infrastructure.Auth;
 using NaderEcommerce.Infrastructure.Persistence;
+using NaderEcommerce.WebApi;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -28,6 +33,52 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+    });
+    builder.Services.AddOutputCache(options =>
+    {
+        options.AddPolicy("PublicCatalog", policy => policy
+            .Expire(TimeSpan.FromMinutes(5))
+            .SetVaryByQuery("*")
+            .Tag("catalog"));
+        options.AddPolicy("PublicCms", policy => policy
+            .Expire(TimeSpan.FromMinutes(10))
+            .SetVaryByQuery("*")
+            .Tag("cms"));
+    });
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 120,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+        options.AddPolicy("Auth", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 12,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+    });
 
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
@@ -73,15 +124,21 @@ try
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+            options.SaveToken = false;
+            options.MapInboundClaims = false;
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateIssuerSigningKey = true,
                 ValidateLifetime = true,
+                RequireExpirationTime = true,
+                RequireSignedTokens = true,
                 ValidIssuer = jwtOptions.Issuer,
                 ValidAudience = jwtOptions.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
+                ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                 ClockSkew = TimeSpan.FromMinutes(1)
             };
         });
@@ -99,9 +156,14 @@ try
         app.UseSwaggerUI();
     }
 
+    app.UseForwardedHeaders();
     app.UseHttpsRedirection();
 
     app.UseSerilogRequestLogging();
+    app.UseResponseCompression();
+    app.UseSecurityHeaders();
+    app.UseRateLimiter();
+    app.UseOutputCache();
 
     app.UseAuthentication();
     app.UseAuthorization();

@@ -195,6 +195,21 @@
 - لیست‌ها بدون فشار غیرضروری روی دیتابیس کار کنند.
 - اسکن اولیه امنیتی و تست‌های دستی مسیرهای مهم بدون ایراد جدی باشند.
 
+وضعیت اجرا:
+- HTTPS redirection، HSTS در Production و پشتیبانی از Forwarded Headers برای اجرا پشت Nginx اضافه شد.
+- JWT سخت‌تر شد: اعتبارسنجی issuer/audience/lifetime/signature، الگوریتم مجاز، عدم ذخیره token و RequireHttpsMetadata در Production.
+- Refresh Tokenها همچنان hash و rotate می‌شوند و در تغییر رمز/غیرفعال‌سازی کاربر revoke می‌شوند.
+- Rate Limiting عمومی برای API و محدودیت سخت‌تر برای register/login/refresh فعال شد.
+- Output Cache کوتاه‌مدت برای کاتالوگ و CMS عمومی اضافه شد.
+- Response Compression برای API و Blazor فعال شد.
+- Headerهای امنیتی پایه شامل CSP، X-Frame-Options، X-Content-Type-Options، Referrer-Policy و Permissions-Policy اضافه شد.
+- Blazor از Antiforgery موجود استفاده می‌کند و API به خاطر Bearer Token در برابر CSRF مبتنی بر cookie متکی نیست.
+- دسترسی به داده‌ها با EF Core و پارامترسازی queryها انجام می‌شود و Razor خروجی متن را encode می‌کند.
+- Indexهای دیتابیس برای queryهای پرتکرار محصولات، سفارش‌ها، پرداخت‌ها، CMS، کاربران و توکن‌ها اضافه شد.
+- لیست‌های سنگین عمومی pagination دارند و لیست‌های سنگین ادمین سقف محافظ دارند.
+- SEO پایه تکمیل شد: meta description، OpenGraph، canonical URL، robots.txt و XML sitemap.
+- بهینه‌سازی تصویر پایه با lazy loading، async decoding و fetch priority تصویر اصلی محصول انجام شد.
+
 ## فاز 6: تست، استقرار و تحویل
 
 هدف: آماده‌سازی نسخه قابل تحویل با مستندات و روند انتشار مشخص.
@@ -224,6 +239,17 @@
 - پروژه روی محیط هدف بالا بیاید.
 - مسیر کامل خرید و مدیریت بدون خطای بحرانی کار کند.
 - مستندات اجرا و استقرار کافی باشد.
+
+وضعیت اجرا:
+- تست‌های موجود Auth و Order/Payment تکمیل و با تست‌های فاز ۶ گسترش داده شد.
+- تست readiness برای Seed اولیه، نقش‌ها، ادمین اولیه، کاتالوگ، CMS، کوپن‌ها، جستجوی محصول، جزئیات محصول و pagination اضافه شد.
+- تست‌های مدیریت محصول و مدیریت وضعیت سفارش در پنل ادمین اضافه شد.
+- مسیر update محصول در AdminService برای sync امن‌تر تصاویر و دسته‌بندی‌ها اصلاح شد.
+- Seed اولیه شامل نقش‌ها، ادمین قابل تنظیم، دسته‌بندی‌ها، محصولات نمونه، کوپن‌ها، اسلایدر، تنظیمات سایت و صفحات CMS آماده و idempotent بررسی شد.
+- فایل‌های تنظیمات Production برای Web API و Blazor اضافه شد.
+- راهنمای استقرار فارسی در `docs/Deployment-Guide.fa.md` اضافه شد.
+- README با وضعیت فاز ۶ و مسیر راهنمای Deployment هماهنگ شد.
+- اجرای `dotnet test` با ۱۱ تست موفق انجام شد.
 
 ## فازهای آینده
 

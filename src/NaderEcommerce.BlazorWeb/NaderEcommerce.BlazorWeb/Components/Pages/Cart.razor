@@ -46,7 +46,13 @@
                             <span>@FormatPrice(item.UnitPrice)</span>
                         </div>
                         <div class="cart-row__controls">
-                            <InputNumber class="cart-row__qty" @bind-Value="quantities[item.ProductId]" />
+                            <input
+                                class="cart-row__qty"
+                                type="number"
+                                min="1"
+                                max="50"
+                                value="@GetQuantity(item.ProductId)"
+                                @onchange="eventArgs => SetQuantity(item.ProductId, eventArgs.Value)" />
                             <button class="button button--ghost" type="button" @onclick="() => UpdateQuantityAsync(item.ProductId)">به‌روزرسانی</button>
                             <button class="button button--ghost" type="button" @onclick="() => RemoveAsync(item.ProductId)">حذف</button>
                         </div>
@@ -114,12 +120,7 @@
         try
         {
             cart = await StorefrontApi.GetCartAsync();
-            quantities.Clear();
-            foreach (var item in cart.Items)
-            {
-                quantities[item.ProductId] = item.Quantity;
-            }
-
+            SyncQuantities();
             couponCode = cart.CouponCode;
         }
         catch (StorefrontApiException exception)
@@ -142,6 +143,7 @@
         try
         {
             cart = await StorefrontApi.UpdateCartItemAsync(productId, new UpdateCartItemRequest(quantity));
+            SyncQuantities();
         }
         catch (StorefrontApiException exception)
         {
@@ -155,6 +157,7 @@
         {
             cart = await StorefrontApi.RemoveCartItemAsync(productId);
             quantities.Remove(productId);
+            SyncQuantities();
         }
         catch (StorefrontApiException exception)
         {
@@ -172,6 +175,7 @@
         try
         {
             cart = await StorefrontApi.ApplyCouponAsync(new ApplyCouponRequest(couponCode));
+            SyncQuantities();
         }
         catch (StorefrontApiException exception)
         {
@@ -185,6 +189,7 @@
         {
             cart = await StorefrontApi.RemoveCouponAsync();
             couponCode = null;
+            SyncQuantities();
         }
         catch (StorefrontApiException exception)
         {
@@ -195,5 +200,43 @@
     private static string FormatPrice(decimal value)
     {
         return string.Create(CultureInfo.GetCultureInfo("fa-IR"), $"{value:N0} تومان");
+    }
+
+    private int GetQuantity(Guid productId)
+    {
+        return quantities.TryGetValue(productId, out var quantity)
+            ? quantity
+            : 1;
+    }
+
+    private void SetQuantity(Guid productId, object? value)
+    {
+        if (int.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out var quantity))
+        {
+            quantities[productId] = Math.Clamp(quantity, 1, 50);
+        }
+    }
+
+    private void SyncQuantities()
+    {
+        if (cart is null)
+        {
+            quantities.Clear();
+            return;
+        }
+
+        var productIds = cart.Items
+            .Select(item => item.ProductId)
+            .ToHashSet();
+
+        foreach (var productId in quantities.Keys.Except(productIds).ToArray())
+        {
+            quantities.Remove(productId);
+        }
+
+        foreach (var item in cart.Items)
+        {
+            quantities[item.ProductId] = item.Quantity;
+        }
     }
 }

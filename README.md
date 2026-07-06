@@ -6,12 +6,11 @@ Clean Architecture starter for the multi-category e-commerce platform described 
 
 ## Current Phase
 
-Phase 1 is in progress. Phase 0 is complete, and the first Phase 1 slice now
-includes domain entities, EF Core schema, JWT authentication, refresh tokens,
-password hashing, role tables, auth endpoints, admin bootstrapping, and a
-generic repository/unit-of-work foundation. Auth also includes stronger password
-validation, failed-login lockout, refresh-token revocation, profile management,
-and admin user activation controls.
+Phase 6 is complete. The project now includes the catalog, checkout and mock
+payment flow, admin panel, CMS, security/performance/SEO hardening, seed data,
+production configuration templates, deployment documentation, and automated
+tests for auth, catalog readiness, admin product/order management, and the
+order/payment workflow.
 
 ## Projects
 
@@ -31,6 +30,8 @@ dotnet test
 dotnet ef database update --project src/NaderEcommerce.Infrastructure/NaderEcommerce.Infrastructure.csproj --startup-project src/NaderEcommerce.WebApi/NaderEcommerce.WebApi.csproj
 dotnet run --project src/NaderEcommerce.WebApi/NaderEcommerce.WebApi.csproj
 ```
+
+Deployment guide: `docs/Deployment-Guide.fa.md`
 
 API endpoints:
 

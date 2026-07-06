@@ -76,12 +76,12 @@ public sealed class AuthService(
 
         if (user is null || !user.IsActive)
         {
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new UnauthorizedAccessException("ایمیل یا رمز عبور نامعتبر است.");
         }
 
         if (IsLockedOut(user))
         {
-            throw new UnauthorizedAccessException("User account is temporarily locked.");
+            throw new UnauthorizedAccessException("حساب کاربری موقتا قفل شده است.");
         }
 
         var passwordResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
@@ -94,7 +94,7 @@ public sealed class AuthService(
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new UnauthorizedAccessException("ایمیل یا رمز عبور نامعتبر است.");
         }
 
         user.LastLoginAt = DateTimeOffset.UtcNow;
@@ -127,7 +127,7 @@ public sealed class AuthService(
 
         if (refreshToken is null || !refreshToken.IsActive || !refreshToken.User.IsActive)
         {
-            throw new UnauthorizedAccessException("Invalid refresh token.");
+            throw new UnauthorizedAccessException("توکن تازه‌سازی نامعتبر است.");
         }
 
         var roles = refreshToken.User.UserRoles.Select(userRole => userRole.Role.Name).ToArray();
@@ -155,12 +155,12 @@ public sealed class AuthService(
 
         if (refreshToken is null || !refreshToken.IsActive)
         {
-            throw new UnauthorizedAccessException("Invalid refresh token.");
+            throw new UnauthorizedAccessException("توکن تازه‌سازی نامعتبر است.");
         }
 
         if (userId.HasValue && refreshToken.UserId != userId.Value)
         {
-            throw new UnauthorizedAccessException("Invalid refresh token.");
+            throw new UnauthorizedAccessException("توکن تازه‌سازی نامعتبر است.");
         }
 
         refreshToken.RevokedAt = DateTimeOffset.UtcNow;
@@ -189,7 +189,7 @@ public sealed class AuthService(
 
         if (passwordResult == PasswordVerificationResult.Failed)
         {
-            throw new UnauthorizedAccessException("Current password is invalid.");
+            throw new UnauthorizedAccessException("رمز عبور فعلی نامعتبر است.");
         }
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);

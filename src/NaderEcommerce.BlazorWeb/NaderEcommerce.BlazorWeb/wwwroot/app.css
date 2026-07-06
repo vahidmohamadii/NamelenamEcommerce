@@ -223,7 +223,7 @@ img {
     align-items: end;
     background:
         linear-gradient(90deg, rgba(33, 28, 27, 0.88), rgba(33, 28, 27, 0.4), rgba(33, 28, 27, 0.08)),
-        url("https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1800&q=80") center/cover;
+        url("/images/hero/beauty-essentials.svg") center/cover;
     color: #fff;
     display: flex;
     min-height: 520px;
@@ -491,17 +491,21 @@ img {
     align-items: start;
     display: grid;
     gap: 1.25rem;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
     padding-top: 1.5rem;
+    width: 100%;
 }
 
 .filter-panel {
     background: #fff;
     border: 1px solid rgba(33, 28, 27, 0.1);
     border-radius: 8px;
+    min-width: 0;
+    overflow: hidden;
     padding: 1rem;
     position: sticky;
     top: 92px;
+    width: 100%;
 }
 
 .filter-panel form,
@@ -518,14 +522,21 @@ img {
 .filter-panel select {
     border: 1px solid rgba(33, 28, 27, 0.18);
     border-radius: 6px;
+    max-width: 100%;
+    min-width: 0;
     min-height: 42px;
     padding: 0.55rem 0.65rem;
+    width: 100%;
 }
 
 .filter-panel__grid {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.catalog-results {
+    min-width: 0;
 }
 
 .check-row {

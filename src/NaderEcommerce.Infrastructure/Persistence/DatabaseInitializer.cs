@@ -33,6 +33,7 @@ public static class DatabaseInitializer
         await EnsureRoleAsync(dbContext, Role.Customer);
         await EnsureCatalogSeedAsync(dbContext);
         await EnsureCmsSeedAsync(dbContext);
+        await EnsureSeedMediaUrlsAsync(dbContext);
 
         if (string.IsNullOrWhiteSpace(adminOptions.Email) ||
             string.IsNullOrWhiteSpace(adminOptions.Password))
@@ -157,7 +158,7 @@ public static class DatabaseInitializer
             true,
             true,
             now.AddMinutes(-9),
-            "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=900&q=80",
+            "/images/products/vitamin-c-serum.svg",
             skincare);
 
         AddProduct(
@@ -174,7 +175,7 @@ public static class DatabaseInitializer
             true,
             false,
             now.AddMinutes(-8),
-            "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=900&q=80",
+            "/images/products/hydra-cream.svg",
             skincare);
 
         AddProduct(
@@ -191,7 +192,7 @@ public static class DatabaseInitializer
             true,
             true,
             now.AddMinutes(-7),
-            "https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=900&q=80",
+            "/images/products/velvet-lipstick.svg",
             makeup);
 
         AddProduct(
@@ -208,7 +209,7 @@ public static class DatabaseInitializer
             false,
             true,
             now.AddMinutes(-6),
-            "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=80",
+            "/images/products/eye-palette.svg",
             makeup,
             tools);
 
@@ -226,7 +227,7 @@ public static class DatabaseInitializer
             false,
             true,
             now.AddMinutes(-5),
-            "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=900&q=80",
+            "/images/products/body-splash.svg",
             fragrance);
 
         AddProduct(
@@ -243,7 +244,7 @@ public static class DatabaseInitializer
             true,
             false,
             now.AddMinutes(-4),
-            "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80",
+            "/images/products/brush-set.svg",
             tools,
             makeup);
 
@@ -315,7 +316,7 @@ public static class DatabaseInitializer
             {
                 Title = "ضروری‌های زیبایی روزانه",
                 Subtitle = "مراقبت پوست، آرایش و ابزارهای کاربردی برای روتین هر روز.",
-                ImageUrl = "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1800&q=80",
+                ImageUrl = "/images/hero/beauty-essentials.svg",
                 LinkUrl = "/products",
                 DisplayOrder = 1,
                 IsActive = true,
@@ -375,6 +376,64 @@ public static class DatabaseInitializer
             SortOrder = sortOrder,
             CreatedAt = createdAt
         };
+    }
+
+    private static async Task EnsureSeedMediaUrlsAsync(ApplicationDbContext dbContext)
+    {
+        var seedImageUrls = new Dictionary<string, string>
+        {
+            ["nader-vitamin-c-serum"] = "/images/products/vitamin-c-serum.svg",
+            ["daily-hydra-cream"] = "/images/products/hydra-cream.svg",
+            ["velvet-lipstick-08"] = "/images/products/velvet-lipstick.svg",
+            ["four-tone-eye-palette"] = "/images/products/eye-palette.svg",
+            ["white-flower-body-splash"] = "/images/products/body-splash.svg",
+            ["seven-piece-brush-set"] = "/images/products/brush-set.svg"
+        };
+
+        var products = await dbContext.Products
+            .Include(product => product.Images)
+            .Where(product => seedImageUrls.Keys.Contains(product.Slug))
+            .ToListAsync();
+
+        foreach (var product in products)
+        {
+            var imageUrl = seedImageUrls[product.Slug];
+            var images = product.Images
+                .OrderByDescending(image => image.IsPrimary)
+                .ThenBy(image => image.DisplayOrder)
+                .ToArray();
+
+            if (images.Length == 0)
+            {
+                product.Images.Add(new ProductImage
+                {
+                    ProductId = product.Id,
+                    Url = imageUrl,
+                    AltText = product.Name,
+                    DisplayOrder = 1,
+                    IsPrimary = true
+                });
+                continue;
+            }
+
+            for (var index = 0; index < images.Length; index++)
+            {
+                images[index].Url = imageUrl;
+                images[index].AltText ??= index == 0
+                    ? product.Name
+                    : $"گالری {product.Name}";
+                images[index].DisplayOrder = index + 1;
+                images[index].IsPrimary = index == 0;
+            }
+        }
+
+        var sliders = await dbContext.Sliders.ToListAsync();
+        foreach (var slider in sliders.Where(slider => slider.ImageUrl.Contains("images.unsplash.com")))
+        {
+            slider.ImageUrl = "/images/hero/beauty-essentials.svg";
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 
     private static void AddProduct(
