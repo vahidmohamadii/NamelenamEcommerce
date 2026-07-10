@@ -23,3 +23,19 @@ public sealed record CmsPageDto(
     string Content,
     string? MetaTitle,
     string? MetaDescription);
+
+public sealed record CmsFaqItemDto(
+    string Question,
+    string Answer,
+    int DisplayOrder);
+
+public sealed record SubmitContactMessageRequest(
+    string FullName,
+    string Email,
+    string? PhoneNumber,
+    string Subject,
+    string Message);
+
+public sealed record SubmitContactMessageResponse(
+    Guid Id,
+    string Message);

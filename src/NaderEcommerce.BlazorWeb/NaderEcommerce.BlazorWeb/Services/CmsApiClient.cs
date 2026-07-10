@@ -17,6 +17,12 @@ public sealed class CmsApiClient(HttpClient httpClient)
             ?? Array.Empty<CmsSliderDto>();
     }
 
+    public async Task<IReadOnlyList<CmsFaqItemDto>> GetFaqsAsync(CancellationToken cancellationToken = default)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<CmsFaqItemDto>>("api/cms/faqs", cancellationToken)
+            ?? Array.Empty<CmsFaqItemDto>();
+    }
+
     public async Task<CmsPageDto?> GetPageBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetAsync($"api/cms/pages/by-slug/{Uri.EscapeDataString(slug)}", cancellationToken);
@@ -39,5 +45,16 @@ public sealed class CmsApiClient(HttpClient httpClient)
 
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<CmsPageDto>(cancellationToken);
+    }
+
+    public async Task<SubmitContactMessageResponse> SubmitContactMessageAsync(
+        SubmitContactMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/cms/contact-messages", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<SubmitContactMessageResponse>(cancellationToken)
+            ?? new SubmitContactMessageResponse(Guid.Empty, "پیام شما ثبت شد.");
     }
 }

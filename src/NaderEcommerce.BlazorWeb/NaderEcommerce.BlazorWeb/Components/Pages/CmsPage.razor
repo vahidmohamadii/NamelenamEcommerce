@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @inject CmsApiClient CmsApi
 @inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>@SeoDefaults.PageTitle(page?.MetaTitle ?? page?.Title ?? "صفحه")</PageTitle>
 <HeadContent>
@@ -15,10 +16,13 @@
     <link rel="canonical" href="@CanonicalUrl" />
 </HeadContent>
 
-<section class="catalog-header">
-    <p class="eyebrow">فروشگاه نفس</p>
-    <h1>@(page?.Title ?? "صفحه")</h1>
-</section>
+@if (ShouldShowPageHeader)
+{
+    <section class="catalog-header">
+        <p class="eyebrow">فروشگاه نفس</p>
+        <h1>@(page?.Title ?? "صفحه")</h1>
+    </section>
+}
 
 <section class="content-band content-band--tight">
     @if (isLoading)
@@ -31,12 +35,73 @@
     }
     else if (page is not null)
     {
-        <article class="cms-content">
-            @foreach (var block in SplitContent(page.Content))
-            {
-                <p>@block</p>
-            }
-        </article>
+        @if (IsContactPage)
+        {
+            <article class="contact-page">
+                <aside class="contact-page__side">
+                    <img src="/images/contact/contact-beauty-support.png" alt="تماس با فروشگاه نفس" loading="lazy" decoding="async" />
+                    <div class="contact-page__phone">
+                        <span>تماس با ما</span>
+                        <a href="tel:09031428163">09031428163</a>
+                    </div>
+                </aside>
+
+                <form class="contact-form" @onsubmit="SubmitContactAsync" @onsubmit:preventDefault>
+                    <label>نام شما
+                        <input @bind="contactForm.FullName" autocomplete="name" />
+                    </label>
+                    <label>ایمیل شما
+                        <input type="email" @bind="contactForm.Email" autocomplete="email" />
+                    </label>
+                    <label>موضوع
+                        <input @bind="contactForm.Subject" />
+                    </label>
+                    <label>پیام شما
+                        <textarea @bind="contactForm.Message"></textarea>
+                    </label>
+
+                    @if (!string.IsNullOrWhiteSpace(contactStatus))
+                    {
+                        <div class="contact-form__status">@contactStatus</div>
+                    }
+
+                    <button class="button button--primary" type="submit" disabled="@isSubmittingContact">
+                        @(isSubmittingContact ? "در حال ارسال..." : "ارسال پیام")
+                    </button>
+                </form>
+            </article>
+        }
+        else if (IsAboutPage)
+        {
+            <article class="about-story">
+                <div class="about-story__media">
+                    <img src="/images/about/about-beauty-products.png" alt="محصولات آرایشی فروشگاه نفس" loading="lazy" decoding="async" />
+                </div>
+                <div class="about-story__copy">
+                    <h2>تیم فروشگاه نفس</h2>
+                    @foreach (var block in SplitContent(page.Content))
+                    {
+                        if (block.StartsWith("# ", StringComparison.Ordinal))
+                        {
+                            <h3>@block[2..]</h3>
+                        }
+                        else
+                        {
+                            <p>@block</p>
+                        }
+                    }
+                </div>
+            </article>
+        }
+        else
+        {
+            <article class="cms-content">
+                @foreach (var block in SplitContent(page.Content))
+                {
+                    <p>@block</p>
+                }
+            </article>
+        }
     }
 </section>
 
@@ -46,21 +111,68 @@
 
     private CmsPageDto? page;
     private bool isLoading = true;
+    private bool isSubmittingContact;
     private string? errorMessage;
+    private string? contactStatus;
+    private string? loadedRelativePath;
+    private ContactForm contactForm = new();
     private string CanonicalUrl => page is null
         ? Navigation.Uri
         : Navigation.ToAbsoluteUri(page.Slug).ToString();
     private string MetaDescription => page?.MetaDescription
         ?? "صفحه اطلاعاتی فروشگاه نفس، فروشگاه لوازم آرایشی و بهداشتی نفس.";
+    private string CurrentRelativePath => Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+    private bool ShouldShowPageHeader => !IsAboutRoute && !IsContactRoute;
+    private bool IsAboutRoute => string.Equals(CurrentRelativePath, "about-us", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Slug, "about-us", StringComparison.OrdinalIgnoreCase)
+        || IsAboutPage;
+    private bool IsContactRoute => string.Equals(CurrentRelativePath, "contact-us", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Slug, "contact-us", StringComparison.OrdinalIgnoreCase)
+        || IsContactPage;
+    private bool IsAboutPage => string.Equals(page?.Key, "about-us", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(page?.Slug, "about-us", StringComparison.OrdinalIgnoreCase);
+    private bool IsContactPage => string.Equals(page?.Key, "contact-us", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(page?.Slug, "contact-us", StringComparison.OrdinalIgnoreCase);
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnInitialized()
     {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        return LoadPageAsync();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadPageAsync(forceReload: true);
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadPageAsync(bool forceReload = false)
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+        if (!forceReload && string.Equals(loadedRelativePath, relativePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        loadedRelativePath = relativePath;
         isLoading = true;
         errorMessage = null;
+        contactStatus = null;
 
         try
         {
-            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
             page = relativePath.Equals("about-us", StringComparison.OrdinalIgnoreCase)
                 ? await CmsApi.GetPageByKeyAsync("about-us")
                 : relativePath.Equals("contact-us", StringComparison.OrdinalIgnoreCase)
@@ -86,5 +198,50 @@
     {
         return content
             .Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private async Task SubmitContactAsync()
+    {
+        contactStatus = null;
+
+        if (string.IsNullOrWhiteSpace(contactForm.FullName)
+            || string.IsNullOrWhiteSpace(contactForm.Email)
+            || string.IsNullOrWhiteSpace(contactForm.Subject)
+            || string.IsNullOrWhiteSpace(contactForm.Message))
+        {
+            contactStatus = "لطفا نام، ایمیل، موضوع و متن پیام را کامل وارد کنید.";
+            return;
+        }
+
+        isSubmittingContact = true;
+
+        try
+        {
+            var response = await CmsApi.SubmitContactMessageAsync(new SubmitContactMessageRequest(
+                contactForm.FullName,
+                contactForm.Email,
+                null,
+                contactForm.Subject,
+                contactForm.Message));
+
+            contactStatus = response.Message;
+            contactForm = new ContactForm();
+        }
+        catch (HttpRequestException)
+        {
+            contactStatus = "ارسال پیام انجام نشد. لطفا کمی بعد دوباره تلاش کنید.";
+        }
+        finally
+        {
+            isSubmittingContact = false;
+        }
+    }
+
+    private sealed class ContactForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

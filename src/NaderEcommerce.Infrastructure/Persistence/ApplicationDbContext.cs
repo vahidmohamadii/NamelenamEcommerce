@@ -34,6 +34,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<WebsiteSettings> WebsiteSettings => Set<WebsiteSettings>();
     public DbSet<Slider> Sliders => Set<Slider>();
     public DbSet<Page> Pages => Set<Page>();
+    public DbSet<FaqItem> FaqItems => Set<FaqItem>();
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -315,6 +317,27 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(page => page.Slug).IsUnique();
             entity.HasIndex(page => new { page.IsPublished, page.Slug });
             entity.HasIndex(page => new { page.IsPublished, page.Key });
+        });
+
+        modelBuilder.Entity<FaqItem>(entity =>
+        {
+            entity.ToTable("FaqItems");
+            entity.HasKey(faq => faq.Id);
+            entity.Property(faq => faq.Question).HasMaxLength(300).IsRequired();
+            entity.Property(faq => faq.Answer).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(faq => new { faq.IsActive, faq.DisplayOrder });
+        });
+
+        modelBuilder.Entity<ContactMessage>(entity =>
+        {
+            entity.ToTable("ContactMessages");
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.FullName).HasMaxLength(160).IsRequired();
+            entity.Property(message => message.Email).HasMaxLength(256).IsRequired();
+            entity.Property(message => message.PhoneNumber).HasMaxLength(32);
+            entity.Property(message => message.Subject).HasMaxLength(220).IsRequired();
+            entity.Property(message => message.Message).HasMaxLength(3000).IsRequired();
+            entity.HasIndex(message => new { message.IsRead, message.CreatedAt });
         });
     }
 

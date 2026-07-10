@@ -22,6 +22,8 @@ public sealed class AdminServiceTests
         };
         dbContext.Categories.Add(category);
         await dbContext.SaveChangesAsync();
+        var categoryId = category.Id;
+        dbContext.ChangeTracker.Clear();
 
         var service = new AdminService(dbContext);
 
@@ -38,7 +40,7 @@ public sealed class AdminServiceTests
             true,
             false,
             null,
-            [category.Id],
+            [categoryId],
             [
                 new UpsertProductImageRequest(
                     "https://example.test/vitamin-c.jpg",
@@ -53,7 +55,7 @@ public sealed class AdminServiceTests
             ]));
 
         Assert.Equal("vitamin-c-serum", created.Slug);
-        Assert.Equal(category.Id, Assert.Single(created.CategoryIds));
+        Assert.Equal(categoryId, Assert.Single(created.CategoryIds));
         Assert.Equal(2, created.Images.Count);
         Assert.True(created.Images.First().IsPrimary);
 
@@ -70,7 +72,7 @@ public sealed class AdminServiceTests
             false,
             true,
             null,
-            [category.Id],
+            [categoryId],
             [
                 new UpsertProductImageRequest(
                     "https://example.test/vitamin-c-pro.jpg",
@@ -88,6 +90,14 @@ public sealed class AdminServiceTests
 
         var deletedProduct = await dbContext.Products.SingleAsync(product => product.Id == created.Id);
         Assert.False(deletedProduct.IsActive);
+        Assert.DoesNotContain(await service.GetProductsAsync(), product => product.Id == created.Id);
+
+        var reactivated = await service.SetProductActiveAsync(
+            created.Id,
+            new SetProductActiveRequest(true));
+
+        Assert.True(reactivated.IsActive);
+        Assert.Contains(await service.GetProductsAsync(), product => product.Id == created.Id);
     }
 
     [Fact]

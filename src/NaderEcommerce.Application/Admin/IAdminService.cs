@@ -15,6 +15,7 @@ public interface IAdminService
     Task<AdminProductDto?> GetProductAsync(Guid productId, CancellationToken cancellationToken = default);
     Task<AdminProductDto> CreateProductAsync(UpsertProductRequest request, CancellationToken cancellationToken = default);
     Task<AdminProductDto> UpdateProductAsync(Guid productId, UpsertProductRequest request, CancellationToken cancellationToken = default);
+    Task<AdminProductDto> SetProductActiveAsync(Guid productId, SetProductActiveRequest request, CancellationToken cancellationToken = default);
     Task DeleteProductAsync(Guid productId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AdminOrderSummaryDto>> GetOrdersAsync(CancellationToken cancellationToken = default);
@@ -38,6 +39,15 @@ public interface IAdminService
     Task<AdminPageDto> CreatePageAsync(UpsertPageRequest request, CancellationToken cancellationToken = default);
     Task<AdminPageDto> UpdatePageAsync(Guid pageId, UpsertPageRequest request, CancellationToken cancellationToken = default);
     Task DeletePageAsync(Guid pageId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminFaqItemDto>> GetFaqItemsAsync(CancellationToken cancellationToken = default);
+    Task<AdminFaqItemDto> CreateFaqItemAsync(UpsertFaqItemRequest request, CancellationToken cancellationToken = default);
+    Task<AdminFaqItemDto> UpdateFaqItemAsync(Guid faqItemId, UpsertFaqItemRequest request, CancellationToken cancellationToken = default);
+    Task DeleteFaqItemAsync(Guid faqItemId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminContactMessageDto>> GetContactMessagesAsync(CancellationToken cancellationToken = default);
+    Task<AdminContactMessageDto> MarkContactMessageAsReadAsync(Guid contactMessageId, CancellationToken cancellationToken = default);
+    Task DeleteContactMessageAsync(Guid contactMessageId, CancellationToken cancellationToken = default);
 
     Task<AdminWebsiteSettingsDto> GetWebsiteSettingsAsync(CancellationToken cancellationToken = default);
     Task<AdminWebsiteSettingsDto> UpdateWebsiteSettingsAsync(UpdateWebsiteSettingsRequest request, CancellationToken cancellationToken = default);

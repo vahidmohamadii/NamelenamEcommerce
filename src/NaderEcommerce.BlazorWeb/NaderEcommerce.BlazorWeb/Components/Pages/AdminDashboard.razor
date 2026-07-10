@@ -72,7 +72,7 @@
     private string? errorMessage;
 
     private bool IsAdmin =>
-        Session.Current?.User.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)) == true;
+        Session.IsAdmin;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

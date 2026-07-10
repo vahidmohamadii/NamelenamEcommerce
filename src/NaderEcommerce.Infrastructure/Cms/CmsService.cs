@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NaderEcommerce.Application.Cms;
+using NaderEcommerce.Domain.Cms;
 using NaderEcommerce.Infrastructure.Persistence;
 
 namespace NaderEcommerce.Infrastructure.Cms;
@@ -44,6 +45,23 @@ public sealed class CmsService(ApplicationDbContext dbContext) : ICmsService
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<CmsFaqItemDto>> GetActiveFaqsAsync(CancellationToken cancellationToken = default)
+    {
+        var faqs = await dbContext.FaqItems
+            .AsNoTracking()
+            .Where(faq => faq.IsActive)
+            .OrderBy(faq => faq.DisplayOrder)
+            .ThenBy(faq => faq.Question)
+            .ToListAsync(cancellationToken);
+
+        return faqs
+            .Select(faq => new CmsFaqItemDto(
+                faq.Question,
+                faq.Answer,
+                faq.DisplayOrder))
+            .ToArray();
+    }
+
     public async Task<CmsPageDto?> GetPublishedPageBySlugAsync(
         string slug,
         CancellationToken cancellationToken = default)
@@ -70,6 +88,27 @@ public sealed class CmsService(ApplicationDbContext dbContext) : ICmsService
                 cancellationToken);
 
         return page is null ? null : MapPage(page);
+    }
+
+    public async Task<SubmitContactMessageResponse> SubmitContactMessageAsync(
+        SubmitContactMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var contactMessage = new ContactMessage
+        {
+            FullName = request.FullName.Trim(),
+            Email = request.Email.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
+            Subject = request.Subject.Trim(),
+            Message = request.Message.Trim()
+        };
+
+        dbContext.ContactMessages.Add(contactMessage);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new SubmitContactMessageResponse(
+            contactMessage.Id,
+            "پیام شما با موفقیت ثبت شد. به زودی با شما تماس می‌گیریم.");
     }
 
     private static CmsPageDto MapPage(Domain.Cms.Page page)

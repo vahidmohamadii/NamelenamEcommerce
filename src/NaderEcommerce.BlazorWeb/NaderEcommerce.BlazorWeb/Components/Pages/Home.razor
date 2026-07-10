@@ -2,6 +2,8 @@
 @inject CatalogApiClient CatalogApi
 @inject CmsApiClient CmsApi
 @inject NavigationManager Navigation
+@implements IDisposable
+@using System.Globalization
 
 <PageTitle>@(settings?.SeoTitle ?? SeoDefaults.HomeTitle)</PageTitle>
 <HeadContent>
@@ -15,17 +17,67 @@
     <script type="application/ld+json">@((MarkupString)StructuredData)</script>
 </HeadContent>
 
-<section class="hero-section" style="@HeroStyle">
+<section class="hero-section">
     <div class="hero-section__content">
-        <p class="eyebrow">کاتالوگ زیبایی</p>
-        <h1>@(heroSlider?.Title ?? settings?.SiteName ?? SeoDefaults.SiteName)</h1>
+        <p class="eyebrow">زیبایی روزانه</p>
+        <h1>درخشش تو از یک انتخاب لطیف شروع می‌شود</h1>
         <p>
-            @(heroSlider?.Subtitle ?? settings?.SeoDescription ?? SeoDefaults.HomeDescription)
+            مجموعه‌ای از محصولات آرایشی و مراقبتی با حال‌وهوای صورتی، لطیف و شیک برای اینکه هر روز با حس بهتری شروع شود.
         </p>
         <div class="hero-section__actions">
             <a class="button button--primary" href="products">مشاهده محصولات</a>
-            <a class="button button--ghost" href="@(heroSlider?.LinkUrl ?? "categories")">کاوش فروشگاه</a>
+            <a class="button button--ghost" href="categories">دسته‌بندی‌ها</a>
         </div>
+    </div>
+</section>
+
+<section class="home-search-band">
+    <div class="home-search-panel">
+        <form class="home-search" @onsubmit="SearchProducts" @onsubmit:preventDefault>
+            <span class="home-search__icon" aria-hidden="true"></span>
+            <input
+                type="search"
+                value="@homeSearch"
+                @oninput="HandleSearchInputAsync"
+                placeholder="جستجو"
+                aria-label="جستجو در محصولات"
+                autocomplete="off" />
+        </form>
+
+        @if (ShouldShowSearchSuggestions)
+        {
+            <div class="home-search__suggestions">
+                @if (isSearchSuggesting)
+                {
+                    <div class="home-search__status">در حال جستجو...</div>
+                }
+                else if (searchSuggestions.Count == 0)
+                {
+                    <div class="home-search__status">محصولی پیدا نشد.</div>
+                }
+                else
+                {
+                    @foreach (var product in searchSuggestions)
+                    {
+                        <a class="home-search__suggestion" href="@($"/products/{product.Slug}")">
+                            <span class="home-search__thumb">
+                                @if (!string.IsNullOrWhiteSpace(product.PrimaryImageUrl))
+                                {
+                                    <img src="@product.PrimaryImageUrl" alt="@product.Name" loading="lazy" decoding="async" />
+                                }
+                            </span>
+                            <span class="home-search__info">
+                                <strong>@product.Name</strong>
+                                <small>@(product.Categories.FirstOrDefault() ?? product.Sku)</small>
+                            </span>
+                            <span class="home-search__price">@FormatPrice(product.DiscountPrice ?? product.Price)</span>
+                        </a>
+                    }
+
+                    <a class="home-search__all" href="@SearchResultsUrl">مشاهده همه نتایج</a>
+                }
+            </div>
+        }
     </div>
 </section>
 
@@ -92,31 +144,61 @@ else if (home is not null)
             }
         </div>
     </section>
+
+    @if (faqs.Count > 0)
+    {
+        <section class="content-band faq-section">
+            <div class="section-heading section-heading--center">
+                <div>
+                    <p class="eyebrow">پاسخ سریع</p>
+                    <h2>سوالات متداول</h2>
+                </div>
+            </div>
+            <div class="faq-list">
+                @foreach (var faq in faqs)
+                {
+                    <details class="faq-item">
+                        <summary>@faq.Question</summary>
+                        <p>@faq.Answer</p>
+                    </details>
+                }
+            </div>
+        </section>
+    }
 }
 
 @code {
     private CatalogHomeDto? home;
     private CmsWebsiteSettingsDto? settings;
-    private CmsSliderDto? heroSlider;
+    private IReadOnlyList<CmsFaqItemDto> faqs = Array.Empty<CmsFaqItemDto>();
     private bool isLoading = true;
     private string? errorMessage;
+    private string? homeSearch;
+    private IReadOnlyList<ProductCardDto> searchSuggestions = Array.Empty<ProductCardDto>();
+    private bool isSearchSuggesting;
+    private int searchRequestVersion;
     private string CanonicalUrl => Navigation.BaseUri.TrimEnd('/');
     private string ProductsUrl => SeoDefaults.AbsoluteUrl(Navigation, "products");
     private string StructuredData => SeoDefaults.HomeStructuredData(CanonicalUrl, ProductsUrl);
     private string SeoDescription => settings?.SeoDescription
         ?? SeoDefaults.HomeDescription;
+    private bool ShouldShowSearchSuggestions => !string.IsNullOrWhiteSpace(homeSearch)
+        && homeSearch.Trim().Length >= 2;
 
-    private string HeroStyle => heroSlider is null
-        ? string.Empty
-        : $"background: linear-gradient(90deg, rgba(33, 28, 27, 0.88), rgba(33, 28, 27, 0.4), rgba(33, 28, 27, 0.08)), url('{heroSlider.ImageUrl}') center/cover;";
+    private string SearchResultsUrl => string.IsNullOrWhiteSpace(homeSearch)
+        ? "/products"
+        : Navigation.GetUriWithQueryParameters("/products", new Dictionary<string, object?>
+        {
+            ["q"] = homeSearch.Trim()
+        });
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             settings = await CmsApi.GetSettingsAsync();
-            heroSlider = (await CmsApi.GetSlidersAsync()).FirstOrDefault();
             home = await CatalogApi.GetHomeAsync();
+            faqs = await CmsApi.GetFaqsAsync();
         }
         catch (HttpRequestException)
         {
@@ -126,5 +208,81 @@ else if (home is not null)
         {
             isLoading = false;
         }
+    }
+
+    private void SearchProducts()
+    {
+        if (string.IsNullOrWhiteSpace(homeSearch))
+        {
+            Navigation.NavigateTo("/products");
+            return;
+        }
+
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters("/products", new Dictionary<string, object?>
+        {
+            ["q"] = homeSearch.Trim()
+        }));
+    }
+
+    private async Task HandleSearchInputAsync(ChangeEventArgs args)
+    {
+        homeSearch = args.Value?.ToString();
+        await LoadSearchSuggestionsAsync();
+    }
+
+    private async Task LoadSearchSuggestionsAsync()
+    {
+        var requestVersion = ++searchRequestVersion;
+        var term = homeSearch?.Trim();
+
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+        {
+            searchSuggestions = Array.Empty<ProductCardDto>();
+            isSearchSuggesting = false;
+            return;
+        }
+
+        isSearchSuggesting = true;
+
+        try
+        {
+            var result = await CatalogApi.GetProductsAsync(new ProductCatalogQuery
+            {
+                Search = term,
+                PageNumber = 1,
+                PageSize = 5
+            });
+
+            if (requestVersion == searchRequestVersion)
+            {
+                searchSuggestions = result?.Items ?? Array.Empty<ProductCardDto>();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            if (requestVersion == searchRequestVersion)
+            {
+                searchSuggestions = Array.Empty<ProductCardDto>();
+            }
+        }
+        finally
+        {
+            if (requestVersion == searchRequestVersion)
+            {
+                isSearchSuggesting = false;
+            }
+        }
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return string.Create(
+            CultureInfo.GetCultureInfo("fa-IR"),
+            $"{value:N0} تومان");
+    }
+
+    public void Dispose()
+    {
+        searchRequestVersion++;
     }
 }

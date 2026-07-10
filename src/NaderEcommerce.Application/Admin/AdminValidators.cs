@@ -80,6 +80,16 @@ public sealed class UpsertPageRequestValidator : AbstractValidator<UpsertPageReq
     }
 }
 
+public sealed class UpsertFaqItemRequestValidator : AbstractValidator<UpsertFaqItemRequest>
+{
+    public UpsertFaqItemRequestValidator()
+    {
+        RuleFor(request => request.Question).NotEmpty().MaximumLength(300);
+        RuleFor(request => request.Answer).NotEmpty().MaximumLength(2000);
+        RuleFor(request => request.DisplayOrder).GreaterThanOrEqualTo(0);
+    }
+}
+
 public sealed class UpdateWebsiteSettingsRequestValidator : AbstractValidator<UpdateWebsiteSettingsRequest>
 {
     public UpdateWebsiteSettingsRequestValidator()

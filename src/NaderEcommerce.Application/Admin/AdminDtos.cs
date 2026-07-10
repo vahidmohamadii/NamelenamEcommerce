@@ -80,6 +80,8 @@ public sealed record UpsertProductImageRequest(
     int DisplayOrder,
     bool IsPrimary);
 
+public sealed record SetProductActiveRequest(bool IsActive);
+
 public sealed record AdminOrderSummaryDto(
     Guid OrderId,
     string OrderNumber,
@@ -159,6 +161,29 @@ public sealed record UpsertPageRequest(
     string? MetaTitle,
     string? MetaDescription,
     bool IsPublished);
+
+public sealed record AdminFaqItemDto(
+    Guid Id,
+    string Question,
+    string Answer,
+    int DisplayOrder,
+    bool IsActive);
+
+public sealed record UpsertFaqItemRequest(
+    string Question,
+    string Answer,
+    int DisplayOrder,
+    bool IsActive);
+
+public sealed record AdminContactMessageDto(
+    Guid Id,
+    string FullName,
+    string Email,
+    string? PhoneNumber,
+    string Subject,
+    string Message,
+    bool IsRead,
+    DateTimeOffset CreatedAt);
 
 public sealed record AdminWebsiteSettingsDto(
     Guid Id,

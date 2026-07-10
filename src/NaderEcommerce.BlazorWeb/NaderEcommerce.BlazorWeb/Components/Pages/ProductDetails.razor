@@ -94,10 +94,6 @@ else
                         <button class="button button--ghost" type="button" @onclick="AddToWishlistAsync">علاقه‌مندی</button>
                     </div>
                 }
-                @if (!string.IsNullOrWhiteSpace(product.QrLinkUrl))
-                {
-                    <a class="button button--ghost" href="@product.QrLinkUrl">لینک QR</a>
-                }
             </div>
 
             @if (!string.IsNullOrWhiteSpace(actionMessage))

@@ -108,6 +108,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
     {
         var products = await ProductQuery()
             .AsNoTracking()
+            .Where(product => product.IsActive)
             .OrderByDescending(product => product.CreatedAt)
             .Take(MaxAdminListItems)
             .ToListAsync(cancellationToken);
@@ -158,6 +159,21 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         SyncProductImages(product, request.Images);
         SyncProductCategories(product, request.CategoryIds);
 
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapProduct(product);
+    }
+
+    public async Task<AdminProductDto> SetProductActiveAsync(
+        Guid productId,
+        SetProductActiveRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await ProductQuery()
+            .SingleOrDefaultAsync(entity => entity.Id == productId, cancellationToken)
+            ?? throw new InvalidOperationException("محصول پیدا نشد.");
+
+        product.IsActive = request.IsActive;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return MapProduct(product);
@@ -401,6 +417,91 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             ?? throw new InvalidOperationException("صفحه پیدا نشد.");
 
         dbContext.Pages.Remove(page);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AdminFaqItemDto>> GetFaqItemsAsync(CancellationToken cancellationToken = default)
+    {
+        var faqs = await dbContext.FaqItems
+            .AsNoTracking()
+            .OrderBy(faq => faq.DisplayOrder)
+            .ThenBy(faq => faq.Question)
+            .ToListAsync(cancellationToken);
+
+        return faqs.Select(MapFaqItem).ToArray();
+    }
+
+    public async Task<AdminFaqItemDto> CreateFaqItemAsync(
+        UpsertFaqItemRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var faq = new FaqItem();
+        ApplyFaqItem(faq, request);
+        dbContext.FaqItems.Add(faq);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapFaqItem(faq);
+    }
+
+    public async Task<AdminFaqItemDto> UpdateFaqItemAsync(
+        Guid faqItemId,
+        UpsertFaqItemRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var faq = await dbContext.FaqItems
+            .SingleOrDefaultAsync(entity => entity.Id == faqItemId, cancellationToken)
+            ?? throw new InvalidOperationException("سوال متداول پیدا نشد.");
+
+        ApplyFaqItem(faq, request);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapFaqItem(faq);
+    }
+
+    public async Task DeleteFaqItemAsync(Guid faqItemId, CancellationToken cancellationToken = default)
+    {
+        var faq = await dbContext.FaqItems
+            .SingleOrDefaultAsync(entity => entity.Id == faqItemId, cancellationToken)
+            ?? throw new InvalidOperationException("سوال متداول پیدا نشد.");
+
+        dbContext.FaqItems.Remove(faq);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AdminContactMessageDto>> GetContactMessagesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var messages = await dbContext.ContactMessages
+            .AsNoTracking()
+            .OrderBy(message => message.IsRead)
+            .ThenByDescending(message => message.CreatedAt)
+            .Take(MaxAdminListItems)
+            .ToListAsync(cancellationToken);
+
+        return messages.Select(MapContactMessage).ToArray();
+    }
+
+    public async Task<AdminContactMessageDto> MarkContactMessageAsReadAsync(
+        Guid contactMessageId,
+        CancellationToken cancellationToken = default)
+    {
+        var message = await dbContext.ContactMessages
+            .SingleOrDefaultAsync(entity => entity.Id == contactMessageId, cancellationToken)
+            ?? throw new InvalidOperationException("پیام تماس پیدا نشد.");
+
+        message.IsRead = true;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapContactMessage(message);
+    }
+
+    public async Task DeleteContactMessageAsync(Guid contactMessageId, CancellationToken cancellationToken = default)
+    {
+        var message = await dbContext.ContactMessages
+            .SingleOrDefaultAsync(entity => entity.Id == contactMessageId, cancellationToken)
+            ?? throw new InvalidOperationException("پیام تماس پیدا نشد.");
+
+        dbContext.ContactMessages.Remove(message);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -815,6 +916,14 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         page.IsPublished = request.IsPublished;
     }
 
+    private static void ApplyFaqItem(FaqItem faq, UpsertFaqItemRequest request)
+    {
+        faq.Question = request.Question.Trim();
+        faq.Answer = request.Answer.Trim();
+        faq.DisplayOrder = request.DisplayOrder;
+        faq.IsActive = request.IsActive;
+    }
+
     private static void ApplyQrLink(QRLink link, UpsertQrLinkRequest request)
     {
         link.TargetUrl = request.TargetUrl.Trim();
@@ -853,7 +962,8 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             product.IsBestSeller,
             product.QrLinkId,
             product.ProductCategories
-                .OrderBy(productCategory => productCategory.Category.SortOrder)
+                .OrderBy(productCategory => productCategory.Category?.SortOrder ?? int.MaxValue)
+                .ThenBy(productCategory => productCategory.CategoryId)
                 .Select(productCategory => productCategory.CategoryId)
                 .ToArray(),
             product.Images
@@ -937,6 +1047,29 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             page.MetaTitle,
             page.MetaDescription,
             page.IsPublished);
+    }
+
+    private static AdminFaqItemDto MapFaqItem(FaqItem faq)
+    {
+        return new AdminFaqItemDto(
+            faq.Id,
+            faq.Question,
+            faq.Answer,
+            faq.DisplayOrder,
+            faq.IsActive);
+    }
+
+    private static AdminContactMessageDto MapContactMessage(ContactMessage message)
+    {
+        return new AdminContactMessageDto(
+            message.Id,
+            message.FullName,
+            message.Email,
+            message.PhoneNumber,
+            message.Subject,
+            message.Message,
+            message.IsRead,
+            message.CreatedAt);
     }
 
     private static AdminWebsiteSettingsDto MapWebsiteSettings(WebsiteSettings settings)

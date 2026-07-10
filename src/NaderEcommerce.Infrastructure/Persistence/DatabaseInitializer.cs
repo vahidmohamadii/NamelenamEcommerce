@@ -324,23 +324,66 @@ public static class DatabaseInitializer
             });
         }
 
-        var existingKeys = await dbContext.Pages
-            .Select(page => page.Key)
-            .ToListAsync();
+        if (!await dbContext.FaqItems.AnyAsync())
+        {
+            dbContext.FaqItems.AddRange(
+                new FaqItem
+                {
+                    Question = "چطور از اصل بودن محصولات مطمئن شوم؟",
+                    Answer = "محصولات فروشگاه نفس با تمرکز بر تامین مطمئن، اطلاعات شفاف و امکان پیگیری سفارش ارائه می‌شوند. اگر درباره محصولی سوال داشتی، قبل از خرید از پشتیبانی راهنمایی بگیر.",
+                    DisplayOrder = 10,
+                    IsActive = true,
+                    CreatedAt = now
+                },
+                new FaqItem
+                {
+                    Question = "ارسال سفارش‌ها چقدر زمان می‌برد؟",
+                    Answer = "زمان ارسال بسته به شهر مقصد و وضعیت سفارش متفاوت است. بعد از ثبت سفارش، وضعیت آن از بخش سفارش‌های من قابل پیگیری است.",
+                    DisplayOrder = 20,
+                    IsActive = true,
+                    CreatedAt = now
+                },
+                new FaqItem
+                {
+                    Question = "برای انتخاب محصول مناسب می‌توانم مشاوره بگیرم؟",
+                    Answer = "بله، اگر بین چند محصول مردد هستی یا برای روتین پوست و آرایش روزانه راهنمایی می‌خواهی، می‌توانی با پشتیبانی فروشگاه در تماس باشی.",
+                    DisplayOrder = 30,
+                    IsActive = true,
+                    CreatedAt = now
+                });
+        }
 
-        if (!existingKeys.Contains("about-us"))
+        const string previousAboutContent = "فروشگاه نفس یک فروشگاه آنلاین متمرکز برای لوازم آرایشی و بهداشتی، مراقبت پوست، عطر و ابزار زیبایی است.\n\nدر فروشگاه نفس تلاش می‌کنیم خرید لوازم آرایشی نفس و محصولات بهداشتی کاربردی، ساده، شفاف و قابل اعتماد باشد.";
+        const string previousEnglishAboutContent = "NaderEcommerce is a focused online beauty store for skincare, makeup, fragrance and beauty tools.\n\nThis page is managed from the admin CMS panel and can be edited without changing code.";
+        const string aboutContent = "فعالیت فروشگاه نفس با یک هدف ساده شروع شد: خرید محصولات آرایشی و مراقبت از پوست برای مشتری، روشن، مطمئن و دلنشین باشد. ما هر محصول را با دقت انتخاب می‌کنیم تا تجربه خرید فقط به انتخاب رنگ و مدل محدود نشود؛ بلکه حس اعتماد، راهنمایی درست و رضایت بعد از خرید هم همراه آن باشد.\n\nدر فروشگاه نفس تلاش می‌کنیم مجموعه‌ای از محصولات کاربردی، خوش‌کیفیت و مناسب استفاده روزانه را کنار هم بچینیم؛ از مراقبت پوست و محصولات آرایشی تا ابزارهای زیبایی که انتخابشان باید راحت و قابل فهم باشد.\n\n# همراهی صادقانه\n\nبرای ما فروش پایان مسیر نیست. اگر بین چند محصول مردد باشی، درباره کاربرد محصول سوال داشته باشی یا بخواهی انتخابت با نیاز پوست و سلیقه‌ات هماهنگ‌تر باشد، تیم نفس کنار توست تا با توضیح شفاف و پاسخ‌گویی دقیق، خریدی آرام‌تر و مطمئن‌تر داشته باشی.";
+
+        var existingPages = await dbContext.Pages.ToListAsync();
+        var existingKeys = existingPages.Select(page => page.Key).ToList();
+        var aboutPage = existingPages.FirstOrDefault(page => page.Key == "about-us");
+
+        if (aboutPage is null)
         {
             dbContext.Pages.Add(new Page
             {
                 Key = "about-us",
                 Title = "درباره فروشگاه نفس",
                 Slug = "about-us",
-                Content = "فروشگاه نفس یک فروشگاه آنلاین متمرکز برای لوازم آرایشی و بهداشتی، مراقبت پوست، عطر و ابزار زیبایی است.\n\nدر فروشگاه نفس تلاش می‌کنیم خرید لوازم آرایشی نفس و محصولات بهداشتی کاربردی، ساده، شفاف و قابل اعتماد باشد.",
+                Content = aboutContent,
                 MetaTitle = "درباره فروشگاه نفس",
-                MetaDescription = "با فروشگاه نفس، فروشگاه لوازم آرایشی و بهداشتی نفس، بیشتر آشنا شوید.",
+                MetaDescription = "با فروشگاه نفس و نگاه ما به انتخاب مطمئن محصولات آرایشی و مراقبت پوست آشنا شوید.",
                 IsPublished = true,
                 CreatedAt = now
             });
+        }
+        else if (aboutPage.Content == previousAboutContent || aboutPage.Content == previousEnglishAboutContent)
+        {
+            aboutPage.Title = "درباره فروشگاه نفس";
+            aboutPage.Slug = "about-us";
+            aboutPage.Content = aboutContent;
+            aboutPage.MetaTitle = "درباره فروشگاه نفس";
+            aboutPage.MetaDescription = "با فروشگاه نفس و نگاه ما به انتخاب مطمئن محصولات آرایشی و مراقبت پوست آشنا شوید.";
+            aboutPage.IsPublished = true;
+            aboutPage.UpdatedAt = now;
         }
 
         if (!existingKeys.Contains("contact-us"))

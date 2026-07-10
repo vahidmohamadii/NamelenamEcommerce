@@ -94,28 +94,52 @@
         </section>
 
         <section class="admin-card">
-            <h2>@(qrId is null ? "لینک QR جدید" : "ویرایش لینک QR")</h2>
-            <form class="admin-form" @onsubmit="SaveQrAsync" @onsubmit:preventDefault>
-                <label>برچسب <input @bind="qrForm.Label" /></label>
-                <label>آدرس مقصد <input @bind="qrForm.TargetUrl" /></label>
-                <label class="check-row"><input type="checkbox" @bind="qrForm.IsActive" /> فعال</label>
+            <h2>@(faqId is null ? "سوال متداول جدید" : "ویرایش سوال متداول")</h2>
+            <form class="admin-form" @onsubmit="SaveFaqAsync" @onsubmit:preventDefault>
+                <label>سوال <input @bind="faqForm.Question" /></label>
+                <label>پاسخ <textarea @bind="faqForm.Answer"></textarea></label>
+                <label>ترتیب <input type="number" @bind="faqForm.DisplayOrder" /></label>
+                <label class="check-row"><input type="checkbox" @bind="faqForm.IsActive" /> فعال</label>
                 <div class="admin-actions">
-                    <button class="button button--primary" type="submit">ذخیره QR</button>
-                    <button class="button button--ghost" type="button" @onclick="ResetQr">جدید</button>
+                    <button class="button button--primary" type="submit">ذخیره سوال</button>
+                    <button class="button button--ghost" type="button" @onclick="ResetFaq">جدید</button>
                 </div>
             </form>
             <div class="admin-table">
-                @foreach (var link in qrLinks)
+                @foreach (var faq in faqItems)
                 {
                     <div class="admin-table__row">
-                        <span>@link.Label</span>
-                        <span>@link.ProductCount محصول</span>
-                        <button class="button button--ghost" type="button" @onclick="() => EditQr(link)">ویرایش</button>
-                        <button class="button button--ghost" type="button" @onclick="() => DeleteQrAsync(link.Id)">حذف</button>
+                        <span>@faq.Question</span>
+                        <span>@(faq.IsActive ? "فعال" : "غیرفعال")</span>
+                        <button class="button button--ghost" type="button" @onclick="() => EditFaq(faq)">ویرایش</button>
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteFaqAsync(faq.Id)">حذف</button>
                     </div>
                 }
             </div>
         </section>
+
+        <section class="admin-card">
+            <h2>پیام‌های تماس</h2>
+            <div class="admin-table admin-table--stacked">
+                @foreach (var message in contactMessages)
+                {
+                    <div class="admin-table__row admin-table__row--message">
+                        <span>@message.FullName</span>
+                        <span>@message.Subject</span>
+                        <span>@message.Email</span>
+                        <span>@(message.PhoneNumber ?? "-")</span>
+                        <span>@(message.IsRead ? "خوانده شده" : "جدید")</span>
+                        <p>@message.Message</p>
+                        @if (!message.IsRead)
+                        {
+                            <button class="button button--ghost" type="button" @onclick="() => MarkContactMessageReadAsync(message.Id)">خواندم</button>
+                        }
+                        <button class="button button--ghost" type="button" @onclick="() => DeleteContactMessageAsync(message.Id)">حذف</button>
+                    </div>
+                }
+            </div>
+        </section>
+
     </div>
 
 </section>
@@ -123,14 +147,15 @@
 @code {
     private IReadOnlyList<AdminSliderDto> sliders = Array.Empty<AdminSliderDto>();
     private IReadOnlyList<AdminPageDto> pages = Array.Empty<AdminPageDto>();
-    private IReadOnlyList<AdminQrLinkDto> qrLinks = Array.Empty<AdminQrLinkDto>();
+    private IReadOnlyList<AdminFaqItemDto> faqItems = Array.Empty<AdminFaqItemDto>();
+    private IReadOnlyList<AdminContactMessageDto> contactMessages = Array.Empty<AdminContactMessageDto>();
     private SettingsForm settingsForm = new();
     private SliderForm sliderForm = new();
     private PageForm pageForm = new();
-    private QrForm qrForm = new();
+    private FaqForm faqForm = new();
     private Guid? sliderId;
     private Guid? pageId;
-    private Guid? qrId;
+    private Guid? faqId;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -156,7 +181,8 @@
         };
         sliders = await AdminApi.GetSlidersAsync();
         pages = await AdminApi.GetPagesAsync();
-        qrLinks = await AdminApi.GetQrLinksAsync();
+        faqItems = await AdminApi.GetFaqItemsAsync();
+        contactMessages = await AdminApi.GetContactMessagesAsync();
         StateHasChanged();
     }
 
@@ -200,13 +226,14 @@
         await LoadAsync();
     }
 
-    private async Task SaveQrAsync()
+    private async Task SaveFaqAsync()
     {
-        await AdminApi.SaveQrLinkAsync(qrId, new UpsertQrLinkRequest(
-            qrForm.TargetUrl,
-            qrForm.Label,
-            qrForm.IsActive));
-        ResetQr();
+        await AdminApi.SaveFaqItemAsync(faqId, new UpsertFaqItemRequest(
+            faqForm.Question,
+            faqForm.Answer,
+            faqForm.DisplayOrder,
+            faqForm.IsActive));
+        ResetFaq();
         await LoadAsync();
     }
 
@@ -239,14 +266,15 @@
         };
     }
 
-    private void EditQr(AdminQrLinkDto link)
+    private void EditFaq(AdminFaqItemDto faq)
     {
-        qrId = link.Id;
-        qrForm = new QrForm
+        faqId = faq.Id;
+        faqForm = new FaqForm
         {
-            Label = link.Label,
-            TargetUrl = link.TargetUrl,
-            IsActive = link.IsActive
+            Question = faq.Question,
+            Answer = faq.Answer,
+            DisplayOrder = faq.DisplayOrder,
+            IsActive = faq.IsActive
         };
     }
 
@@ -262,9 +290,21 @@
         await LoadAsync();
     }
 
-    private async Task DeleteQrAsync(Guid id)
+    private async Task DeleteFaqAsync(Guid id)
     {
-        await AdminApi.DeleteQrLinkAsync(id);
+        await AdminApi.DeleteFaqItemAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task MarkContactMessageReadAsync(Guid id)
+    {
+        await AdminApi.MarkContactMessageAsReadAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task DeleteContactMessageAsync(Guid id)
+    {
+        await AdminApi.DeleteContactMessageAsync(id);
         await LoadAsync();
     }
 
@@ -280,10 +320,10 @@
         pageForm = new PageForm();
     }
 
-    private void ResetQr()
+    private void ResetFaq()
     {
-        qrId = null;
-        qrForm = new QrForm();
+        faqId = null;
+        faqForm = new FaqForm();
     }
 
     private sealed class SettingsForm
@@ -318,10 +358,12 @@
         public bool IsPublished { get; set; } = true;
     }
 
-    private sealed class QrForm
+    private sealed class FaqForm
     {
-        public string TargetUrl { get; set; } = string.Empty;
-        public string? Label { get; set; }
+        public string Question { get; set; } = string.Empty;
+        public string Answer { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
         public bool IsActive { get; set; } = true;
     }
+
 }

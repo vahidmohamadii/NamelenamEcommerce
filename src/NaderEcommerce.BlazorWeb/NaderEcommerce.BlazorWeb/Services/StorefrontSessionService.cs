@@ -7,6 +7,7 @@ namespace NaderEcommerce.BlazorWeb.Services;
 public sealed class StorefrontSessionService(IJSRuntime jsRuntime)
 {
     private const string StorageKey = "nader.storefront.session";
+    private const string AdminRole = "Admin";
     private bool isInitialized;
 
     public AuthResponse? Current { get; private set; }
@@ -15,7 +16,16 @@ public sealed class StorefrontSessionService(IJSRuntime jsRuntime)
         Current is not null &&
         Current.AccessTokenExpiresAt > DateTimeOffset.UtcNow;
 
+    public bool IsAdmin =>
+        IsInRole(AdminRole);
+
     public event Action? Changed;
+
+    public bool IsInRole(string role)
+    {
+        return IsAuthenticated
+            && Current?.User.Roles.Any(currentRole => string.Equals(currentRole, role, StringComparison.OrdinalIgnoreCase)) == true;
+    }
 
     public async Task EnsureInitializedAsync()
     {

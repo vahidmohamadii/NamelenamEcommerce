@@ -140,6 +140,22 @@ public sealed class AdminCatalogController(
         }
     }
 
+    [HttpPatch("products/{productId:guid}/active")]
+    public async Task<ActionResult<AdminProductDto>> SetProductActive(
+        Guid productId,
+        SetProductActiveRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await adminService.SetProductActiveAsync(productId, request, cancellationToken));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+    }
+
     [HttpDelete("products/{productId:guid}")]
     public async Task<IActionResult> DeleteProduct(Guid productId, CancellationToken cancellationToken)
     {

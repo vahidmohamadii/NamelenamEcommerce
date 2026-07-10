@@ -9,6 +9,7 @@ using NaderEcommerce.Application.Auth;
 using NaderEcommerce.Application.Catalog;
 using NaderEcommerce.Domain.Identity;
 using NaderEcommerce.Infrastructure.Catalog;
+using NaderEcommerce.Infrastructure.Cms;
 using NaderEcommerce.Infrastructure.Persistence;
 
 namespace NaderEcommerce.Infrastructure.Tests.Integration;
@@ -34,6 +35,7 @@ public sealed class Phase6ReadinessTests
             Assert.True(await dbContext.Coupons.AnyAsync(coupon => coupon.Code == "WELCOME150"));
             Assert.True(await dbContext.WebsiteSettings.AnyAsync());
             Assert.True(await dbContext.Sliders.AnyAsync(slider => slider.IsActive));
+            Assert.True(await dbContext.FaqItems.AnyAsync(faq => faq.IsActive));
             Assert.True(await dbContext.Pages.AnyAsync(page => page.Key == "about-us"));
             Assert.True(await dbContext.Pages.AnyAsync(page => page.Key == "contact-us"));
         }
@@ -62,8 +64,10 @@ public sealed class Phase6ReadinessTests
         await using var scope = services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var service = new CatalogService(dbContext);
+        var cmsService = new CmsService(dbContext);
 
         var home = await service.GetHomeAsync();
+        var faqs = await cmsService.GetActiveFaqsAsync();
         var products = await service.GetProductsAsync(new ProductCatalogQuery
         {
             PageNumber = -5,
@@ -76,6 +80,8 @@ public sealed class Phase6ReadinessTests
         Assert.NotEmpty(home.Categories);
         Assert.NotEmpty(home.FeaturedProducts);
         Assert.NotEmpty(home.LatestProducts);
+        Assert.NotEmpty(faqs);
+        Assert.All(faqs, faq => Assert.False(string.IsNullOrWhiteSpace(faq.Question)));
         Assert.Equal(1, products.PageNumber);
         Assert.Equal(48, products.PageSize);
         Assert.True(products.TotalCount >= 6);

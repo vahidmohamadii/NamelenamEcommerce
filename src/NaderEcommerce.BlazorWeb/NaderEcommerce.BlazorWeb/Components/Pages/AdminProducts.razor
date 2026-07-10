@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject AdminApiClient AdminApi
 @inject StorefrontSessionService Session
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>مدیریت محصولات | فروشگاه نفس</PageTitle>
 <NoIndexHead />
@@ -23,41 +24,39 @@
         </nav>
     </header>
 
-    <div class="admin-grid admin-grid--wide">
-        <section class="admin-card">
+    <div class="admin-grid admin-grid--wide admin-products-grid">
+        <section class="admin-card admin-product-editor">
             <h2>@(editingId is null ? "محصول جدید" : "ویرایش محصول")</h2>
-            <form class="admin-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
-                <label>نام <input @bind="form.Name" /></label>
-                <label>اسلاگ <input @bind="form.Slug" /></label>
-                <label>SKU <input @bind="form.Sku" /></label>
-                <label>توضیحات <textarea @bind="form.Description"></textarea></label>
-                <label>مشخصات <textarea @bind="form.Specifications"></textarea></label>
-                <div class="admin-form__columns">
-                    <label>قیمت <input type="number" step="1000" @bind="form.Price" /></label>
-                    <label>تخفیف <input type="number" step="1000" @bind="form.DiscountPrice" /></label>
-                    <label>موجودی <input type="number" @bind="form.Stock" /></label>
-                </div>
-                <label>
-                    لینک QR
-                    <select @bind="form.QrLinkIdText">
-                        <option value="">بدون لینک QR</option>
-                        @foreach (var link in qrLinks)
+            <form class="admin-form admin-product-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <div class="admin-product-form__top">
+                    <section class="admin-product-panel admin-product-panel--info">
+                        <h3>اطلاعات محصول</h3>
+                        <div class="admin-product-fields">
+                            <label>نام <input @bind="form.Name" /></label>
+                            <label>اسلاگ <input @bind="form.Slug" /></label>
+                            <label>SKU <input @bind="form.Sku" /></label>
+                            <label class="admin-product-fields__wide">توضیحات <textarea @bind="form.Description"></textarea></label>
+                            <label class="admin-product-fields__wide">مشخصات <textarea @bind="form.Specifications"></textarea></label>
+                            <div class="admin-form__columns">
+                                <label>قیمت <input type="number" step="1000" @bind="form.Price" /></label>
+                                <label>تخفیف <input type="number" step="1000" @bind="form.DiscountPrice" /></label>
+                                <label>موجودی <input type="number" @bind="form.Stock" /></label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="admin-option-list admin-product-panel admin-product-panel--categories">
+                        <h3>دسته‌بندی‌ها</h3>
+                        @foreach (var category in categories)
                         {
-                            <option value="@link.Id">@(!string.IsNullOrWhiteSpace(link.Label) ? link.Label : link.TargetUrl)</option>
+                            <label class="check-row">
+                                <input type="checkbox" checked="@form.CategoryIds.Contains(category.Id)" @onchange="eventArgs => ToggleCategory(category.Id, eventArgs.Value)" />
+                                @category.Name
+                            </label>
                         }
-                    </select>
-                </label>
-                <div class="admin-option-list">
-                    <strong>دسته‌بندی‌ها</strong>
-                    @foreach (var category in categories)
-                    {
-                        <label class="check-row">
-                            <input type="checkbox" checked="@form.CategoryIds.Contains(category.Id)" @onchange="eventArgs => ToggleCategory(category.Id, eventArgs.Value)" />
-                            @category.Name
-                        </label>
-                    }
-                </div>
-                <div class="admin-image-list">
+                    </section>
+
+                    <section class="admin-image-list admin-image-list--compact admin-product-panel admin-product-panel--images">
                     <div class="section-heading">
                         <h2>تصاویر</h2>
                         <button class="button button--ghost" type="button" @onclick="AddImage">افزودن تصویر</button>
@@ -66,14 +65,32 @@
                     {
                         var image = form.Images[index];
                         <div class="admin-image-row">
-                            <label>آدرس تصویر <input @bind="image.Url" /></label>
-                            <label>متن جایگزین <input @bind="image.AltText" /></label>
-                            <label>ترتیب <input type="number" @bind="image.DisplayOrder" /></label>
-                            <label class="check-row"><input type="checkbox" @bind="image.IsPrimary" /> تصویر اصلی</label>
-                            <button class="button button--ghost" type="button" @onclick="() => RemoveImage(image)">حذف</button>
+                            <div class="admin-image-row__preview">
+                                @if (!string.IsNullOrWhiteSpace(image.Url))
+                                {
+                                    <img src="@image.Url" alt="پیش‌نمایش تصویر محصول" />
+                                }
+                                else
+                                {
+                                    <span>بدون تصویر</span>
+                                }
+                            </div>
+                            <div class="admin-image-row__fields">
+                                <label>
+                                    آپلود تصویر
+                                    <InputFile class="admin-file-input" OnChange="args => UploadImageAsync(image, args)" accept="image/png,image/jpeg,image/webp,image/gif" />
+                                </label>
+                                <label>ترتیب <input type="number" @bind="image.DisplayOrder" /></label>
+                            </div>
+                            <div class="admin-image-row__actions">
+                                <label class="check-row"><input type="checkbox" @bind="image.IsPrimary" /> تصویر اصلی</label>
+                                <button class="button button--ghost" type="button" @onclick="() => RemoveImage(image)">حذف</button>
+                            </div>
                         </div>
                     }
+                    </section>
                 </div>
+
                 <div class="admin-checks">
                     <label class="check-row"><input type="checkbox" @bind="form.IsActive" /> فعال</label>
                     <label class="check-row"><input type="checkbox" @bind="form.IsFeatured" /> شاخص</label>
@@ -90,7 +107,7 @@
             }
         </section>
 
-        <section class="admin-card">
+        <section class="admin-card admin-product-list">
             <h2>فهرست محصولات</h2>
             <div class="admin-table">
                 @foreach (var product in products)
@@ -100,8 +117,10 @@
                         <span>@product.Sku</span>
                         <span>@product.Stock موجود</span>
                         <strong>@product.Price.ToString("N0")</strong>
-                        <button class="button button--ghost" type="button" @onclick="() => Edit(product)">ویرایش</button>
-                        <button class="button button--ghost" type="button" @onclick="() => DeleteAsync(product.Id)">غیرفعال</button>
+                        <div class="admin-product-list__actions">
+                            <button class="button button--ghost" type="button" @onclick="() => Edit(product)">ویرایش</button>
+                            <button class="button button--ghost" type="button" @onclick="() => DeactivateAsync(product)">غیرفعال</button>
+                        </div>
                     </div>
                 }
             </div>
@@ -112,10 +131,17 @@
 @code {
     private IReadOnlyList<AdminProductDto> products = Array.Empty<AdminProductDto>();
     private IReadOnlyList<AdminCategoryDto> categories = Array.Empty<AdminCategoryDto>();
-    private IReadOnlyList<AdminQrLinkDto> qrLinks = Array.Empty<AdminQrLinkDto>();
     private ProductForm form = new();
     private Guid? editingId;
     private string? message;
+    private const long MaxImageUploadSize = 5 * 1024 * 1024;
+    private static readonly Dictionary<string, string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image/jpeg"] = ".jpg",
+        ["image/png"] = ".png",
+        ["image/webp"] = ".webp",
+        ["image/gif"] = ".gif"
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -129,7 +155,6 @@
     {
         await Session.EnsureInitializedAsync();
         categories = await AdminApi.GetCategoriesAsync();
-        qrLinks = await AdminApi.GetQrLinksAsync();
         products = await AdminApi.GetProductsAsync();
         StateHasChanged();
     }
@@ -160,13 +185,13 @@
                 form.IsActive,
                 form.IsFeatured,
                 form.IsBestSeller,
-                string.IsNullOrWhiteSpace(form.QrLinkIdText) ? null : Guid.Parse(form.QrLinkIdText),
+                null,
                 form.CategoryIds.ToArray(),
                 imageRequests);
 
-            await AdminApi.SaveProductAsync(editingId, request);
+            var saved = await AdminApi.SaveProductAsync(editingId, request);
+            UpsertProductInList(saved);
             ResetForm();
-            await LoadAsync();
         }
         catch (Exception exception) when (exception is StorefrontApiException or FormatException)
         {
@@ -190,7 +215,6 @@
             IsActive = product.IsActive,
             IsFeatured = product.IsFeatured,
             IsBestSeller = product.IsBestSeller,
-            QrLinkIdText = product.QrLinkId?.ToString() ?? string.Empty,
             CategoryIds = product.CategoryIds.ToHashSet(),
             Images = product.Images
                 .OrderBy(image => image.DisplayOrder)
@@ -206,10 +230,41 @@
         };
     }
 
-    private async Task DeleteAsync(Guid id)
+    private async Task DeactivateAsync(AdminProductDto product)
     {
-        await AdminApi.DeleteProductAsync(id);
-        await LoadAsync();
+        message = null;
+        try
+        {
+            await AdminApi.SetProductActiveAsync(product.Id, new SetProductActiveRequest(false));
+            products = products
+                .Where(item => item.Id != product.Id)
+                .ToArray();
+
+            if (editingId == product.Id)
+            {
+                ResetForm();
+            }
+        }
+        catch (StorefrontApiException exception)
+        {
+            message = exception.Message;
+        }
+    }
+
+    private void UpsertProductInList(AdminProductDto product)
+    {
+        var currentProducts = products
+            .Where(item => item.Id != product.Id)
+            .ToList();
+
+        if (product.IsActive)
+        {
+            currentProducts.Insert(0, product);
+        }
+
+        products = currentProducts
+            .OrderByDescending(item => item.CreatedAt)
+            .ToArray();
     }
 
     private void ResetForm()
@@ -254,6 +309,40 @@
         }
     }
 
+    private async Task UploadImageAsync(ProductImageForm image, InputFileChangeEventArgs args)
+    {
+        message = null;
+        var file = args.File;
+
+        if (!AllowedImageExtensions.TryGetValue(file.ContentType, out var extension))
+        {
+            message = "فرمت تصویر باید JPG، PNG، WEBP یا GIF باشد.";
+            return;
+        }
+
+        if (file.Size > MaxImageUploadSize)
+        {
+            message = "حجم تصویر نباید بیشتر از ۵ مگابایت باشد.";
+            return;
+        }
+
+        var uploadsDirectory = System.IO.Path.Combine(
+            WebHostEnvironment.WebRootPath,
+            "images",
+            "uploads",
+            "products");
+        System.IO.Directory.CreateDirectory(uploadsDirectory);
+
+        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var absolutePath = System.IO.Path.Combine(uploadsDirectory, fileName);
+
+        await using var stream = System.IO.File.Create(absolutePath);
+        await file.OpenReadStream(MaxImageUploadSize).CopyToAsync(stream);
+
+        image.Url = $"/images/uploads/products/{fileName}";
+        image.AltText = string.IsNullOrWhiteSpace(image.AltText) ? form.Name : image.AltText;
+    }
+
     private sealed class ProductForm
     {
         public string Name { get; set; } = string.Empty;
@@ -267,7 +356,6 @@
         public bool IsActive { get; set; } = true;
         public bool IsFeatured { get; set; }
         public bool IsBestSeller { get; set; }
-        public string QrLinkIdText { get; set; } = string.Empty;
         public HashSet<Guid> CategoryIds { get; set; } = new();
         public List<ProductImageForm> Images { get; set; } = new()
         {

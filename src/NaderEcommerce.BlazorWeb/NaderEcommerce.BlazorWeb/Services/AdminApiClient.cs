@@ -36,6 +36,9 @@ public sealed class AdminApiClient(HttpClient httpClient, StorefrontSessionServi
             request,
             cancellationToken);
 
+    public Task<AdminProductDto> SetProductActiveAsync(Guid id, SetProductActiveRequest request, CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<AdminProductDto>(HttpMethod.Patch, $"api/admin/products/{id}/active", request, cancellationToken);
+
     public Task DeleteProductAsync(Guid id, CancellationToken cancellationToken = default)
         => SendAuthorizedNoContentAsync(HttpMethod.Delete, $"api/admin/products/{id}", null, cancellationToken);
 
@@ -101,6 +104,38 @@ public sealed class AdminApiClient(HttpClient httpClient, StorefrontSessionServi
 
     public Task DeletePageAsync(Guid id, CancellationToken cancellationToken = default)
         => SendAuthorizedNoContentAsync(HttpMethod.Delete, $"api/admin/cms/pages/{id}", null, cancellationToken);
+
+    public Task<IReadOnlyList<AdminFaqItemDto>> GetFaqItemsAsync(CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<IReadOnlyList<AdminFaqItemDto>>(HttpMethod.Get, "api/admin/cms/faqs", null, cancellationToken);
+
+    public Task<AdminFaqItemDto> SaveFaqItemAsync(Guid? id, UpsertFaqItemRequest request, CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<AdminFaqItemDto>(
+            id is null ? HttpMethod.Post : HttpMethod.Put,
+            id is null ? "api/admin/cms/faqs" : $"api/admin/cms/faqs/{id}",
+            request,
+            cancellationToken);
+
+    public Task DeleteFaqItemAsync(Guid id, CancellationToken cancellationToken = default)
+        => SendAuthorizedNoContentAsync(HttpMethod.Delete, $"api/admin/cms/faqs/{id}", null, cancellationToken);
+
+    public Task<IReadOnlyList<AdminContactMessageDto>> GetContactMessagesAsync(CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<IReadOnlyList<AdminContactMessageDto>>(
+            HttpMethod.Get,
+            "api/admin/cms/contact-messages",
+            null,
+            cancellationToken);
+
+    public Task<AdminContactMessageDto> MarkContactMessageAsReadAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<AdminContactMessageDto>(
+            HttpMethod.Patch,
+            $"api/admin/cms/contact-messages/{id}/read",
+            null,
+            cancellationToken);
+
+    public Task DeleteContactMessageAsync(Guid id, CancellationToken cancellationToken = default)
+        => SendAuthorizedNoContentAsync(HttpMethod.Delete, $"api/admin/cms/contact-messages/{id}", null, cancellationToken);
 
     public Task<AdminWebsiteSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default)
         => SendAuthorizedAsync<AdminWebsiteSettingsDto>(HttpMethod.Get, "api/admin/cms/settings", null, cancellationToken);

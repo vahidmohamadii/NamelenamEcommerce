@@ -4,7 +4,7 @@
 @implements IDisposable
 @using Microsoft.AspNetCore.WebUtilities
 
-<nav class="store-nav">
+<nav class="@NavClass">
     <a class="store-nav__brand" href="">
         <span class="store-nav__mark">N</span>
         <span>فروشگاه نفس</span>
@@ -26,7 +26,7 @@
         <NavLink class="store-nav__link" href="wishlist">علاقه‌مندی‌ها</NavLink>
         <NavLink class="store-nav__link" href="cart">سبد خرید</NavLink>
         <NavLink class="store-nav__link" href="orders">سفارش‌های من</NavLink>
-        @if (Session.Current?.User.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)) == true)
+        @if (Session.IsAdmin)
         {
             <NavLink class="store-nav__link" href="admin">مدیریت</NavLink>
         }
@@ -41,7 +41,7 @@
         else
         {
             <a class="store-nav__secondary" href="@BuildReturnUrl("/signin")">ورود</a>
-            <a class="store-nav__action" href="@BuildReturnUrl("/register")">حساب جدید</a>
+            <a class="store-nav__action" href="@BuildReturnUrl("/register")">ثبت‌نام</a>
         }
     </div>
 </nav>
@@ -83,6 +83,10 @@
     {
         InvokeAsync(StateHasChanged);
     }
+
+    private string NavClass => Session.IsAdmin
+        ? "store-nav store-nav--admin"
+        : "store-nav";
 
     private string BuildReturnUrl(string path)
     {
