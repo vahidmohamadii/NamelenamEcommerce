@@ -24,6 +24,16 @@
     color: #ec4f8f;
 }
 
+.store-nav__logo {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: block;
+    flex: 0 0 auto;
+    height: 56px;
+    object-fit: contain;
+    width: 56px;
+}
+
 .store-nav__mark {
     align-items: center;
     background: linear-gradient(135deg, #f05f9f, #ff9abe);
@@ -194,6 +204,11 @@
 
     .store-nav__brand {
         grid-column: 1;
+    }
+
+    .store-nav__logo {
+        height: 48px;
+        width: 48px;
     }
 
     .store-nav__toggle-button {
