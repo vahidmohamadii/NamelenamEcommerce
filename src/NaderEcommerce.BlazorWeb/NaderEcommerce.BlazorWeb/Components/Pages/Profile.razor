@@ -1,0 +1,159 @@
+@page "/profile"
+@inject StorefrontApiClient StorefrontApi
+@inject StorefrontSessionService Session
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>پروفایل | فروشگاه نفس</PageTitle>
+<NoIndexHead />
+
+<section class="auth-shell">
+    <div class="auth-card auth-card--wide">
+        <p class="eyebrow">حساب مشتری</p>
+        <h1>پروفایل کاربری</h1>
+        <p class="auth-copy">اطلاعات تماس و آدرس ارسال را تکمیل کن تا هنگام خرید سفارش بدون معطلی ثبت شود.</p>
+
+        @if (!Session.IsAuthenticated)
+        {
+            <div class="notice-action">
+                <div class="notice">برای تکمیل پروفایل ابتدا وارد حساب کاربری شو.</div>
+                <a class="button button--primary" href="@SignInUrl">ورود</a>
+            </div>
+        }
+        else if (isLoading)
+        {
+            <div class="loading-line">در حال دریافت پروفایل...</div>
+        }
+        else
+        {
+            <EditForm Model="profile" OnValidSubmit="SubmitAsync">
+                <div class="auth-form">
+                    <label>
+                        نام و نام خانوادگی
+                        <InputText @bind-Value="profile.FullName" required />
+                    </label>
+                    <label>
+                        ایمیل
+                        <InputText @bind-Value="profile.Email" type="email" disabled />
+                    </label>
+                    <label>
+                        شماره تماس
+                        <InputText @bind-Value="profile.PhoneNumber" required />
+                    </label>
+                    <label>
+                        آدرس ارسال
+                        <InputTextArea @bind-Value="profile.Address" required />
+                    </label>
+
+                    @if (!string.IsNullOrWhiteSpace(statusMessage))
+                    {
+                        <div class="@StatusClass">@statusMessage</div>
+                    }
+
+                    <div class="coupon-form__actions">
+                        <button class="button button--primary" type="submit" disabled="@isSubmitting">
+                            @(isSubmitting ? "در حال ذخیره..." : "ذخیره پروفایل")
+                        </button>
+                        @if (!string.IsNullOrWhiteSpace(ReturnUrl))
+                        {
+                            <a class="button button--ghost" href="@NormalizeReturnUrl()">ادامه خرید</a>
+                        }
+                    </div>
+                </div>
+            </EditForm>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private ProfileFormModel profile = new();
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private bool hasSaved;
+    private string? statusMessage;
+    private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "profile");
+    private string StatusClass => hasSaved ? "contact-form__status" : "notice";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.EnsureInitializedAsync();
+        if (!Session.IsAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        statusMessage = null;
+
+        try
+        {
+            var current = await StorefrontApi.GetProfileAsync();
+            profile = new ProfileFormModel
+            {
+                FullName = current.FullName,
+                Email = current.Email,
+                PhoneNumber = current.PhoneNumber ?? string.Empty,
+                Address = current.Address ?? string.Empty
+            };
+        }
+        catch (StorefrontApiException exception)
+        {
+            statusMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        hasSaved = false;
+        statusMessage = null;
+
+        try
+        {
+            var updated = await StorefrontApi.UpdateProfileAsync(new UpdateProfileRequest(
+                profile.FullName,
+                profile.PhoneNumber,
+                profile.Address));
+
+            profile.FullName = updated.FullName;
+            profile.PhoneNumber = updated.PhoneNumber ?? string.Empty;
+            profile.Address = updated.Address ?? string.Empty;
+            hasSaved = true;
+            statusMessage = "پروفایل با موفقیت ذخیره شد.";
+        }
+        catch (StorefrontApiException exception)
+        {
+            statusMessage = exception.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string NormalizeReturnUrl()
+    {
+        return string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : $"/{ReturnUrl.TrimStart('/')}";
+    }
+
+    private sealed class ProfileFormModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+    }
+}

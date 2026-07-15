@@ -43,7 +43,7 @@ public sealed class AuthService(
             Email = request.Email.Trim(),
             NormalizedEmail = normalizedEmail,
             FullName = request.FullName.Trim(),
-            PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim()
+            PhoneNumber = request.PhoneNumber.Trim()
         };
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password);

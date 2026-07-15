@@ -23,6 +23,7 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .MaximumLength(160);
 
         RuleFor(request => request.PhoneNumber)
+            .NotEmpty()
             .MaximumLength(32);
     }
 }

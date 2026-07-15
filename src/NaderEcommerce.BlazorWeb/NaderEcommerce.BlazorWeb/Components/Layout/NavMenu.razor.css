@@ -121,7 +121,12 @@
     max-width: 132px;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-decoration: none;
     white-space: nowrap;
+}
+
+.store-nav__user:hover {
+    color: #ec4f8f;
 }
 
 .store-nav__secondary {

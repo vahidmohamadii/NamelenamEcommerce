@@ -35,7 +35,7 @@
     <div class="store-nav__account">
         @if (Session.IsAuthenticated && Session.Current is not null)
         {
-            <span class="store-nav__user">@Session.Current.User.FullName</span>
+            <a class="store-nav__user" href="profile">@Session.Current.User.FullName</a>
             <button class="store-nav__secondary" type="button" @onclick="SignOutAsync">خروج</button>
         }
         else

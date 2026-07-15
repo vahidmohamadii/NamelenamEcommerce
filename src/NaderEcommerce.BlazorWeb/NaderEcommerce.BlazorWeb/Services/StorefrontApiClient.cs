@@ -66,6 +66,12 @@ public sealed class StorefrontApiClient(HttpClient httpClient, StorefrontSession
     public Task<IReadOnlyList<WishlistProductDto>> RemoveWishlistAsync(Guid productId, CancellationToken cancellationToken = default)
         => SendAuthorizedAsync<IReadOnlyList<WishlistProductDto>>(HttpMethod.Delete, $"api/wishlist/{productId}", null, cancellationToken);
 
+    public Task<UserProfileDto> GetProfileAsync(CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<UserProfileDto>(HttpMethod.Get, "api/account/profile", null, cancellationToken);
+
+    public Task<UserProfileDto> UpdateProfileAsync(UpdateProfileRequest request, CancellationToken cancellationToken = default)
+        => SendAuthorizedAsync<UserProfileDto>(HttpMethod.Put, "api/account/profile", request, cancellationToken);
+
     public Task<ShoppingCartDto> GetCheckoutSummaryAsync(CancellationToken cancellationToken = default)
         => SendAuthorizedAsync<ShoppingCartDto>(HttpMethod.Get, "api/orders/checkout", null, cancellationToken);
 

@@ -26,6 +26,7 @@ public sealed class AccountService(ApplicationDbContext dbContext) : IAccountSer
             user.Email,
             user.FullName,
             user.PhoneNumber,
+            user.Address,
             user.UserRoles.Select(userRole => userRole.Role.Name).ToArray());
     }
 
@@ -45,9 +46,8 @@ public sealed class AccountService(ApplicationDbContext dbContext) : IAccountSer
         }
 
         user.FullName = request.FullName.Trim();
-        user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
-            ? null
-            : request.PhoneNumber.Trim();
+        user.PhoneNumber = request.PhoneNumber.Trim();
+        user.Address = request.Address.Trim();
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -56,6 +56,7 @@ public sealed class AccountService(ApplicationDbContext dbContext) : IAccountSer
             user.Email,
             user.FullName,
             user.PhoneNumber,
+            user.Address,
             user.UserRoles.Select(userRole => userRole.Role.Name).ToArray());
     }
 }

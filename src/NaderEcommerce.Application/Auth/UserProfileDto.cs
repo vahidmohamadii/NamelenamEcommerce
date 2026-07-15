@@ -5,4 +5,5 @@ public sealed record UserProfileDto(
     string Email,
     string FullName,
     string? PhoneNumber,
+    string? Address,
     IReadOnlyCollection<string> Roles);

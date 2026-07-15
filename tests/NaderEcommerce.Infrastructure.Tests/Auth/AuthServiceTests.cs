@@ -17,7 +17,7 @@ public sealed class AuthServiceTests
         var service = CreateService(dbContext);
 
         var response = await service.RegisterAsync(
-            new RegisterRequest("customer@example.com", "P@ssword123", "Customer User", null),
+            new RegisterRequest("customer@example.com", "P@ssword123", "Customer User", "09120000000"),
             "127.0.0.1");
 
         Assert.Contains(Role.Customer, response.User.Roles);
@@ -32,7 +32,7 @@ public sealed class AuthServiceTests
         var service = CreateService(dbContext, maxFailedLoginAttempts: 2);
 
         await service.RegisterAsync(
-            new RegisterRequest("lockout@example.com", "P@ssword123", "Locked User", null),
+            new RegisterRequest("lockout@example.com", "P@ssword123", "Locked User", "09120000000"),
             "127.0.0.1");
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -54,7 +54,7 @@ public sealed class AuthServiceTests
         var service = CreateService(dbContext);
 
         var registered = await service.RegisterAsync(
-            new RegisterRequest("password@example.com", "P@ssword123", "Password User", null),
+            new RegisterRequest("password@example.com", "P@ssword123", "Password User", "09120000000"),
             "127.0.0.1");
 
         await service.ChangePasswordAsync(

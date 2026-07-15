@@ -34,6 +34,13 @@
     {
         <div class="empty-state">سبد خرید خالی است.</div>
     }
+    else if (profileRequiresAddress)
+    {
+        <div class="notice-action">
+            <div class="notice">برای ثبت سفارش ابتدا آدرس ارسال را در پروفایل تکمیل کن.</div>
+            <a class="button button--primary" href="@ProfileUrl">تکمیل پروفایل</a>
+        </div>
+    }
     else
     {
         <div class="commerce-main">
@@ -51,11 +58,11 @@
                         </label>
                         <label>
                             شماره تماس
-                            <InputText @bind-Value="checkout.CustomerPhoneNumber" />
+                            <InputText @bind-Value="checkout.CustomerPhoneNumber" required />
                         </label>
                         <label>
                             آدرس ارسال
-                            <InputTextArea @bind-Value="checkout.ShippingAddress" />
+                            <InputTextArea @bind-Value="checkout.ShippingAddress" required />
                         </label>
                         <label>
                             کد پستی
@@ -94,8 +101,10 @@
     private CheckoutFormModel checkout = new();
     private bool isLoading = true;
     private bool isSubmitting;
+    private bool profileRequiresAddress;
     private string? message;
     private string SignInUrl => QueryHelpers.AddQueryString("/signin", "returnUrl", "checkout");
+    private string ProfileUrl => QueryHelpers.AddQueryString("/profile", "returnUrl", "checkout");
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,8 +115,6 @@
             return;
         }
 
-        checkout.CustomerFullName = Session.Current?.User.FullName ?? string.Empty;
-        checkout.CustomerEmail = Session.Current?.User.Email ?? string.Empty;
         await LoadAsync();
     }
 
@@ -118,6 +125,12 @@
 
         try
         {
+            var profile = await StorefrontApi.GetProfileAsync();
+            checkout.CustomerFullName = profile.FullName;
+            checkout.CustomerEmail = profile.Email;
+            checkout.CustomerPhoneNumber = profile.PhoneNumber ?? string.Empty;
+            checkout.ShippingAddress = profile.Address ?? string.Empty;
+            profileRequiresAddress = string.IsNullOrWhiteSpace(profile.Address);
             summary = await StorefrontApi.GetCheckoutSummaryAsync();
         }
         catch (StorefrontApiException exception)
@@ -166,7 +179,7 @@
     {
         public string CustomerFullName { get; set; } = string.Empty;
         public string CustomerEmail { get; set; } = string.Empty;
-        public string? CustomerPhoneNumber { get; set; }
+        public string CustomerPhoneNumber { get; set; } = string.Empty;
         public string ShippingAddress { get; set; } = string.Empty;
         public string? PostalCode { get; set; }
         public string? Notes { get; set; }

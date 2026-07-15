@@ -79,6 +79,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(user => user.NormalizedEmail).HasMaxLength(256).IsRequired();
             entity.Property(user => user.FullName).HasMaxLength(160).IsRequired();
             entity.Property(user => user.PhoneNumber).HasMaxLength(32);
+            entity.Property(user => user.Address).HasMaxLength(1000);
             entity.Property(user => user.PasswordHash).IsRequired();
             entity.Property(user => user.FailedLoginAttempts).HasDefaultValue(0);
             entity.HasIndex(user => user.NormalizedEmail).IsUnique();

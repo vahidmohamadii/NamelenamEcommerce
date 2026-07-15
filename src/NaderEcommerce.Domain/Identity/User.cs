@@ -10,6 +10,7 @@ public sealed class User : BaseEntity
     public string NormalizedEmail { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
+    public string? Address { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public int FailedLoginAttempts { get; set; }
