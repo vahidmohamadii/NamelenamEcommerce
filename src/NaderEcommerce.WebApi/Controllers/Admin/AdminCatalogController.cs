@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using NaderEcommerce.Application.Admin;
 
 namespace NaderEcommerce.WebApi.Controllers.Admin;
@@ -11,7 +12,8 @@ namespace NaderEcommerce.WebApi.Controllers.Admin;
 public sealed class AdminCatalogController(
     IAdminService adminService,
     IValidator<UpsertCategoryRequest> categoryValidator,
-    IValidator<UpsertProductRequest> productValidator) : ControllerBase
+    IValidator<UpsertProductRequest> productValidator,
+    IOutputCacheStore outputCacheStore) : ControllerBase
 {
     [HttpGet("dashboard")]
     public async Task<ActionResult<AdminDashboardDto>> GetDashboard(CancellationToken cancellationToken)
@@ -38,7 +40,9 @@ public sealed class AdminCatalogController(
 
         try
         {
-            return Ok(await adminService.CreateCategoryAsync(request, cancellationToken));
+            var category = await adminService.CreateCategoryAsync(request, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
+            return Ok(category);
         }
         catch (InvalidOperationException exception)
         {
@@ -60,7 +64,9 @@ public sealed class AdminCatalogController(
 
         try
         {
-            return Ok(await adminService.UpdateCategoryAsync(categoryId, request, cancellationToken));
+            var category = await adminService.UpdateCategoryAsync(categoryId, request, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
+            return Ok(category);
         }
         catch (InvalidOperationException exception)
         {
@@ -74,6 +80,7 @@ public sealed class AdminCatalogController(
         try
         {
             await adminService.DeleteCategoryAsync(categoryId, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
             return NoContent();
         }
         catch (InvalidOperationException exception)
@@ -110,7 +117,9 @@ public sealed class AdminCatalogController(
 
         try
         {
-            return Ok(await adminService.CreateProductAsync(request, cancellationToken));
+            var product = await adminService.CreateProductAsync(request, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
+            return Ok(product);
         }
         catch (InvalidOperationException exception)
         {
@@ -132,7 +141,9 @@ public sealed class AdminCatalogController(
 
         try
         {
-            return Ok(await adminService.UpdateProductAsync(productId, request, cancellationToken));
+            var product = await adminService.UpdateProductAsync(productId, request, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
+            return Ok(product);
         }
         catch (InvalidOperationException exception)
         {
@@ -148,7 +159,9 @@ public sealed class AdminCatalogController(
     {
         try
         {
-            return Ok(await adminService.SetProductActiveAsync(productId, request, cancellationToken));
+            var product = await adminService.SetProductActiveAsync(productId, request, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
+            return Ok(product);
         }
         catch (InvalidOperationException exception)
         {
@@ -162,11 +175,17 @@ public sealed class AdminCatalogController(
         try
         {
             await adminService.DeleteProductAsync(productId, cancellationToken);
+            await EvictCatalogCacheAsync(cancellationToken);
             return NoContent();
         }
         catch (InvalidOperationException exception)
         {
             return NotFound(new { message = exception.Message });
         }
+    }
+
+    private ValueTask EvictCatalogCacheAsync(CancellationToken cancellationToken)
+    {
+        return outputCacheStore.EvictByTagAsync("catalog", cancellationToken);
     }
 }

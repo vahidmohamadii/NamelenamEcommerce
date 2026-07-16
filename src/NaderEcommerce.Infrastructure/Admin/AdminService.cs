@@ -823,14 +823,17 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
             }
             else
             {
-                product.Images.Add(new ProductImage
+                var newImage = new ProductImage
                 {
                     ProductId = product.Id,
                     Url = request.Url.Trim(),
                     AltText = NormalizeOptional(request.AltText),
                     DisplayOrder = request.DisplayOrder,
                     IsPrimary = isPrimary
-                });
+                };
+
+                product.Images.Add(newImage);
+                dbContext.ProductImages.Add(newImage);
             }
         }
 
@@ -858,7 +861,7 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
         }
     }
 
-    private static void SyncProductCategories(Product product, IReadOnlyList<Guid> categoryIds)
+    private void SyncProductCategories(Product product, IReadOnlyList<Guid> categoryIds)
     {
         var requestedCategoryIds = categoryIds.Distinct().ToHashSet();
         var removedCategories = product.ProductCategories
@@ -876,11 +879,14 @@ public sealed class AdminService(ApplicationDbContext dbContext) : IAdminService
 
         foreach (var categoryId in requestedCategoryIds.Except(existingCategoryIds))
         {
-            product.ProductCategories.Add(new ProductCategory
+            var productCategory = new ProductCategory
             {
                 ProductId = product.Id,
                 CategoryId = categoryId
-            });
+            };
+
+            product.ProductCategories.Add(productCategory);
+            dbContext.ProductCategories.Add(productCategory);
         }
     }
 
